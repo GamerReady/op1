@@ -15,7 +15,7 @@ const HOLDER_BYTES = 0x40;
 
 const CARRIER_SLOTS = (function () {
   try {
-    const q = new URLSearchParams(location.search).get("slots");
+    const q = new URLSearchParams(location.search || location.hash.slice(1)).get("slots");
     const n = q ? parseInt(q, 10) : 0;
     if (n >= 100000 && n <= 40000000) return n;
   } catch (e) {}
@@ -30,7 +30,7 @@ const symbolToString = Symbol.prototype.toString;
 const _gOverride = (function () {
   const out = {};
   try {
-    const q = new URLSearchParams(location.search).getAll("g");
+    const q = new URLSearchParams(location.search || location.hash.slice(1)).getAll("g");
     for (const item of q) {
       const [k, v] = item.split(":");
       const n = v && v.startsWith("0x") ? parseInt(v, 16) : parseInt(v, 10);
