@@ -1,3 +1,5 @@
+import { cachedBinary } from "./cached-binary.js";
+
 import { establishPrimitive } from "./core.js";
 import { installWindowP, pairStatus } from "./mem.js";
 import { int64 } from "./int64.js";
@@ -8,7 +10,7 @@ const stateEl = document.getElementById("state");
 const lines = [];
 let passCount = 0,
   failCount = 0;
-const params = new URLSearchParams(location.search);
+const params = new URLSearchParams(location.search || location.hash.slice(1));
 const STOP_BEFORE_DOUBLE = params.get("stop") === "beforedouble";
 
 function post(tag, detail) {
@@ -2554,8 +2556,7 @@ let allDone = false,
             const SITES = [];
             if (DO_PATCH) {
               try {
-                const r = await fetch(KPATCH_FILE);
-                if (r.ok) kpatchBlob = new Uint8Array(await r.arrayBuffer());
+                kpatchBlob = await cachedBinary(KPATCH_FILE);
               } catch (e) {
                 mark("KPATCH-FETCH-THREW", (e && e.message) || String(e));
               }
@@ -2584,8 +2585,7 @@ let allDone = false,
             }
             if (DO_PAYLOAD) {
               try {
-                const r = await fetch(PAYLOAD_FILE);
-                if (r.ok) payloadBlob = new Uint8Array(await r.arrayBuffer());
+                payloadBlob = await cachedBinary(PAYLOAD_FILE);
               } catch (e) {
                 mark("PAYLOAD-FETCH-THREW", (e && e.message) || String(e));
               }

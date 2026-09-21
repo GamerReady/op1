@@ -1,9 +1,10 @@
 CACHE MANIFEST
-# rev 20260921-offline-navigation-1
+# rev 87683b606f0cf28c455f
 
-# Keep the complete loader graph in the application cache. The PS4 WebKit
-# application-cache implementation can treat query-string navigations as
-# distinct entries, so cache the payload/debug variants used by the launcher.
+# The launcher uses load.html#options so all new navigations share one key.
+# Keep the legacy query URLs for existing bookmarks. Cache the classic bundle,
+# worker dependencies and binary files before reporting offline readiness.
+./
 index.html
 load.html
 load.html?payload=hen
@@ -11,6 +12,8 @@ load.html?payload=hen&log=1
 load.html?payload=goldhen
 load.html?payload=goldhen&log=1
 rpc_worker.js
+js/loader.js
+js/cached-binary.js
 js/jb.js
 js/core.js
 js/mem.js

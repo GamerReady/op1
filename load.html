@@ -25,10 +25,40 @@
     <div id="spin"></div>
     <div id="msg">Restart your console</div>
     <div id="wrap"><div id="state"></div><div id="out"></div></div>
-    <script type="module">
-      // Do not add a cache-busting query here. Query strings create a second
-      // module graph on the PS4 browser and can duplicate core.js state.
-      import "./js/jb.js";
+    <script>
+      (function () {
+        // Normalize old query links after arrival; subsequent reloads use the
+        // same cached document, including automatic retries.
+        if (location.search) {
+          location.replace("load.html#" + location.search.slice(1));
+          return;
+        }
+        var failed = false;
+        function fail() {
+          if (failed || window.loaderStarted) return;
+          failed = true;
+          clearTimeout(timer);
+          document.body.className = "fail";
+          document.getElementById("msg").textContent =
+            "Loader files could not start. Reconnect Wi-Fi, open index.html and wait for offline ready, then retry.";
+        }
+        var timer = setTimeout(fail, 30000);
+        window.addEventListener("error", fail, false);
+        var options = new URLSearchParams(location.hash.slice(1));
+        var payload = options.get("payload");
+        if (payload === "hen" || payload === "goldhen") window.selectedPayload = payload;
+        // Classic scripts use the legacy browser's AppCache resource path.
+        // Bundle imports once so shared module state cannot be duplicated.
+        var script = document.createElement("script");
+        script.src = "js/loader.js";
+        script.onerror = fail;
+        script.onload = function () {
+          clearTimeout(timer);
+          if (!window.loaderStarted) fail();
+          window.removeEventListener("error", fail, false);
+        };
+        document.body.appendChild(script);
+      })();
     </script>
   </body>
 </html>

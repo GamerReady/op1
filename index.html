@@ -118,14 +118,14 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
     set("v-fw", key || "Not a PS4", key ? "ok" : "err");
     set("v-sup", supported ? "Supported" : "Not supported", supported ? "ok" : "err");
 
-    // Redirects to load.html and appends ?payload= to the URL
-    function go(payload) { 
-        setState("Loading jailbreak...", "warn"); 
-        var target = "load.html" + location.search;
-        if(payload) {
-            target += (target.indexOf('?') === -1 ? '?' : '&') + "payload=" + payload;
-        }
-        location.replace(target); 
+    // Fragments are not part of the AppCache key. Preserve all options without
+    // creating a different uncached document URL for every combination.
+    function go(payload) {
+        setState("Loading jailbreak...", "warn");
+        var options = new URLSearchParams(location.search || location.hash.slice(1));
+        if (payload) options.set("payload", payload);
+        var query = options.toString();
+        location.replace("load.html" + (query ? "#" + query : ""));
     }
 
     // Displays the buttons for user interaction
@@ -200,52 +200,63 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
         btn.focus();
     }
 
-    // If unsupported, skip the cache checks and let them click "Run Anyway"
-    if (!supported) {
-        showPicker(false);
-        return;
-    }
-
     var ac = window.applicationCache;
-    if (!ac || !document.documentElement.hasAttribute("manifest")) {
-        showPicker(true);
-    } else if (!navigator.onLine) {
-        setCache("offline -- from cache", true);
-        showPicker(true);
-    } else if (ac.status === ac.IDLE) {
-        setCache("cached", true);
-        showPicker(true);
-    } else if (ac.status === ac.UPDATEREADY) {
+    function ready() { showPicker(supported); }
+    function note(text) { $("note").textContent = text; }
+    function cached() {
+        setCache("cached -- offline ready", true);
+        note("You can disconnect Wi-Fi and reopen this page.");
+        ready();
+    }
+    function unavailable() {
+        setCache("offline cache unavailable", false);
+        note("Connect to Wi-Fi and reload. Wait for offline ready before disconnecting.");
+        ready();
+    }
+    function updated() {
         try { ac.swapCache(); } catch (e) {}
         setCache("update downloaded", true);
+        note("Reload to use the updated offline files.");
         promptReload();
+    }
+    function downloading() {
+        setCache("caching for offline...", false);
+        setState("Preparing offline files...", "warn");
+        $("picker").style.display = "none";
+        note("Keep Wi-Fi connected until caching finishes.");
+    }
+    if (!ac || !document.documentElement.hasAttribute("manifest")) {
+        setCache("offline caching not supported", false);
+        note("This browser cannot save this site with Application Cache.");
+        ready();
     } else {
-        setCache("checking cache...", false);
-        ac.addEventListener("downloading", function () { setCache("caching for offline...", false); }, false);
+        // Subscribe even when the initial state is IDLE or the network is down.
+        // navigator.onLine is not evidence that a complete cache exists.
+        ac.addEventListener("checking", function () {
+            setCache("checking cache...", false);
+        }, false);
+        ac.addEventListener("downloading", downloading, false);
         ac.addEventListener("progress", function (e) {
             if (e && e.total) setCache("caching " + Math.round((e.loaded / e.total) * 100) + "%", false);
         }, false);
-        ac.addEventListener("cached", function () {
-            setCache("cached for offline use", true);
-            showPicker(true);
-        }, false);
-        ac.addEventListener("updateready", function () {
-            try { ac.swapCache(); } catch (e) {}
-            setCache("update downloaded", true);
-            promptReload();
-        }, false);
-        ac.addEventListener("noupdate", function () {
-            setCache("cached -- offline ready", true);
-            showPicker(true);
-        }, false);
+        ac.addEventListener("cached", cached, false);
+        ac.addEventListener("noupdate", cached, false);
+        ac.addEventListener("updateready", updated, false);
         ac.addEventListener("error", function () {
-            setCache("cache unavailable", false);
-            showPicker(true); // Still let them run it
+            // A failed online update does not invalidate the previous cache.
+            if (ac.status === ac.IDLE) cached();
+            else unavailable();
         }, false);
-        ac.addEventListener("obsolete", function () {
-            setCache("cache obsolete", false);
-            showPicker(true);
-        }, false);
+        ac.addEventListener("obsolete", unavailable, false);
+
+        if (ac.status === ac.UPDATEREADY) updated();
+        else if (ac.status === ac.IDLE) cached();
+        else if (ac.status === ac.DOWNLOADING) downloading();
+        else if (!navigator.onLine || ac.status === ac.OBSOLETE) unavailable();
+        else {
+            setCache("checking cache...", false);
+            note("Keep Wi-Fi connected until caching finishes.");
+        }
     }
 })();
 </script>
