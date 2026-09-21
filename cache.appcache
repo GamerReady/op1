@@ -1,10 +1,10 @@
 CACHE MANIFEST
-# rev 20260921-ps4-cache-fix-1
+# rev 20260921-ps4-worker-path-fix-2
 
-# Keep this list limited to files that actually exist. A single missing entry
-# invalidates the entire application cache in the PS4 browser.
+# Every listed resource exists. Missing entries invalidate the whole appcache.
 index.html
 load.html
+rpc_worker.js
 js/jb.js
 js/core.js
 js/mem.js
