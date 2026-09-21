@@ -1,40 +1,70 @@
 <!doctype html>
 <html lang="en" manifest="cache.appcache">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>GamerReady</title>
-    <style>
-      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      html, body { min-height: 100%; background: #000; color: #fff; font: 14px/1.7 "Courier New", Courier, monospace; }
-      #brand { padding: 16px 24px; border-bottom: 1px solid #1a1a1a; font-size: 12px; letter-spacing: .3em; text-transform: uppercase; color: #444; }
-      #spin { position: fixed; top: calc(50% + 20px); left: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border: 4px solid #1a1a1a; border-top-color: #fff; border-radius: 50%; animation: spin .9s linear infinite; }
-      @keyframes spin { to { transform: rotate(360deg); } }
-      #msg { position: fixed; top: 50%; left: 0; right: 0; transform: translateY(-50%); text-align: center; font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: #f44; display: none; padding: 24px; }
-      #wrap { padding: 0; } #state, #out { display: none; }
-      body.done #spin, body.fail #spin { display: none; } body.fail #msg { display: block; }
-      body.log #spin, body.log #msg { display: none; } body.log #wrap { padding: 24px; }
-      body.log #state { display: block; font-size: 16px; font-weight: bold; margin-bottom: 12px; letter-spacing: .1em; text-transform: uppercase; }
-      body.log #out { display: block; white-space: pre-wrap; font: 12px/1.5 "Courier New", Courier, monospace; background: #0a0a0a; border: 1px solid #1a1a1a; padding: 14px; height: calc(100vh - 120px); overflow-y: auto; color: #ccc; }
-      .ok { color: #0f0; } .bad { color: #f44; } .warn { color: #fc0; } code { color: #fff; background: #222; padding: 2px 4px; }
-    </style>
-  </head>
-  <body>
-    <div id="brand"><b>GamerReady</b></div>
-    <div id="spin"></div>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GamerReady diagnostics</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{min-height:100%;background:#000;color:#fff;font:14px/1.7 "Courier New",Courier,monospace}
+    #brand{padding:16px 24px;border-bottom:1px solid #1a1a1a;font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:#444}
+    #spin{position:fixed;top:calc(50% + 20px);left:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border:4px solid #1a1a1a;border-top-color:#fff;border-radius:50%;animation:spin .9s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    #msg{display:none;margin:24px 0 12px;color:#f44;font-weight:bold;letter-spacing:.1em;text-transform:uppercase}
+    #wrap{padding:24px;max-width:1000px;margin:auto}
+    #state{font-size:16px;font-weight:bold;margin-bottom:12px;letter-spacing:.1em;text-transform:uppercase}
+    #out{white-space:pre-wrap;font:12px/1.5 "Courier New",Courier,monospace;background:#0a0a0a;border:1px solid #1a1a1a;padding:14px;min-height:180px;max-height:calc(100vh - 150px);overflow-y:auto;color:#ccc}
+    .ok{color:#0f0}.bad{color:#f44}.warn{color:#fc0}.dim{color:#666}
+    #hint{margin-top:14px;color:#888;font-size:12px}
+    #hint code{color:#fff;background:#222;padding:2px 4px}
+    body.done #spin,body.fail #spin{display:none}
+    body.fail #msg{display:block}
+    body.wait #wrap{display:none}
+  </style>
+</head>
+<body class="wait">
+  <div id="brand"><b>GamerReady</b></div>
+  <div id="spin"></div>
+  <main id="wrap">
     <div id="msg">Restart your console</div>
-    <div id="wrap"><div id="state"></div><div id="out"></div></div>
-    <script>
-      (function () {
-        var params = new URLSearchParams(window.location.search);
-        var selected = params.get("payload");
-        window.selectedPayload = selected === "hen" || selected === "goldhen" ? selected : "goldhen";
-      }());
-    </script>
-    <script type="module">
-      // Do not add a cache-busting query here. Query strings create a second
-      // module graph on the PS4 browser and can duplicate core.js state.
-      import "./js/jb.js";
-    </script>
-  </body>
+    <div id="state" class="warn">Starting diagnostics...</div>
+    <div id="out"></div>
+    <div id="hint">Keep this page open and save the lines above. The first <code>FAIL</code>, <code>ERROR</code>, <code>MISS</code>, or <code>THREW</code> line usually identifies the failed stage. Open without a query string to run normally; use <code>?log=1</code> to explicitly request diagnostics.</div>
+  </main>
+
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var selected = params.get("payload");
+      window.selectedPayload = selected === "hen" || selected === "goldhen" ? selected : "goldhen";
+
+      // The existing jb.js logger is the useful diagnosis. Enable it by default
+      // so a failed run no longer leaves only the generic restart message.
+      if (params.get("log") !== "1") {
+        params.set("log", "1");
+        try { history.replaceState(null, "", location.pathname + "?" + params.toString()); } catch (e) {}
+      }
+
+      window.addEventListener("error", function (event) {
+        document.body.className = "fail";
+        var state = document.getElementById("state");
+        var out = document.getElementById("out");
+        if (state) { state.textContent = "Loader error"; state.className = "bad"; }
+        if (out) out.textContent += "\nLOADER-ERROR  " + (event.message || "unknown script error") +
+          "\nsource=" + (event.filename || "unknown") + ":" + (event.lineno || "?") + ":" + (event.colno || "?") + "\n";
+      });
+      window.addEventListener("unhandledrejection", function (event) {
+        document.body.className = "fail";
+        var state = document.getElementById("state");
+        var out = document.getElementById("out");
+        var reason = event.reason && event.reason.stack ? event.reason.stack : String(event.reason || "unknown rejection");
+        if (state) { state.textContent = "Loader promise failed"; state.className = "bad"; }
+        if (out) out.textContent += "\nUNHANDLED-REJECTION  " + reason + "\n";
+      });
+    }());
+  </script>
+  <script type="module">
+    import "./js/jb.js";
+  </script>
+</body>
 </html>
