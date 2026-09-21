@@ -10,7 +10,6 @@ html,body{height:100%;background:#000;color:#fff;
   display:flex;align-items:center;justify-content:center}
 #w{width:100%;max-width:520px;padding:0 24px}
 
-/* Brand area with GamerReady logo */
 .brand{font-size:12px;letter-spacing:.3em;text-transform:uppercase;
   color:#444;margin-bottom:24px;display:flex;align-items:center;}
 .brand img{width:24px;height:24px;border-radius:50%;margin-right:12px;}
@@ -21,13 +20,11 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
 .lbl{color:#555;white-space:nowrap;min-width:80px}
 .val{text-align:right;word-break:break-all}
 
-/* Status colors */
-.ok{color:#0f0} /* Bright green for supported/ready */
+.ok{color:#0f0}
 .warn{color:#fc0}
 .err{color:#f44}
 .dim{color:#444}
 
-/* Action picker/prompt area */
 #picker{margin-top:26px;display:none}
 .ptitle{font-size:11px;letter-spacing:.25em;text-transform:uppercase;
   color:#555;margin-bottom:14px;text-align:center;}
@@ -40,10 +37,8 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
 .btn.ghost{background:#000;color:#fff;border:1px solid #333}
 .btn.ghost:hover:not(:disabled){border-color:#666;color:#ccc}
 
-/* Focus styles so PS4 controller D-pad highlights the button */
 .btn:focus:not(:disabled), .btn.ghost:focus:not(:disabled) { outline: 2px solid #0078d7; outline-offset: 2px; }
 
-/* Disabled state for locked payloads */
 .btn:disabled {
   background: #1a1a1a;
   color: #555;
@@ -65,11 +60,11 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
   <div class="row"><span class="lbl">Status</span><span class="val" id="v-st">detecting firmware...</span></div>
   <div class="row"><span class="lbl">Cache</span><span class="val" id="v-cache">&mdash;</span></div>
   <hr>
-  
+
   <div id="picker">
     <div class="ptitle" id="picker-title">Ready</div>
     <div class="btns" id="btn-container">
-      <!-- Buttons are generated dynamically via JavaScript -->
+
     </div>
   </div>
   <div id="note"></div>
@@ -78,30 +73,26 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
 <script>
 (function () {
     function $(id) { return document.getElementById(id); }
-    function set(id, txt, cls) { 
-        var e = $(id); 
+    function set(id, txt, cls) {
+        var e = $(id);
         if (e) {
-            e.textContent = txt; 
-            e.className = "val" + (cls ? " " + cls : ""); 
+            e.textContent = txt;
+            e.className = "val" + (cls ? " " + cls : "");
         }
     }
-
-    // Handles coloring the Status row
-    function setState(t, c) { 
+    function setState(t, c) {
         var cls = "";
         if (c === "warn") cls = "warn";
         else if (c === "bad") cls = "err";
         else if (c === "ok") cls = "ok";
-        set("v-st", t, cls); 
+        set("v-st", t, cls);
     }
-    
-    // Handles coloring the Cache row
-    function setCache(t, ok) { 
-        set("v-cache", t, ok ? "ok" : "dim"); 
+    function setCache(t, ok) {
+        set("v-cache", t, ok ? "ok" : "dim");
     }
 
     var params = new URLSearchParams(location.search);
-    var SUPPORTED = { 1302: 1, 1304: 1, 1350: 1, 1352: 1 }; 
+    var SUPPORTED = { 1302: 1, 1304: 1, 1350: 1, 1352: 1 };
 
     var key = null, fwnum = null;
     var m = /PlayStation\s+4[\/ ](\d+)\.(\d+)/.exec(navigator.userAgent);
@@ -117,30 +108,25 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
 
     set("v-fw", key || "Not a PS4", key ? "ok" : "err");
     set("v-sup", supported ? "Supported" : "Not supported", supported ? "ok" : "err");
-
-    // Redirects to load.html and appends ?payload= to the URL
-    function go(payload) { 
-        setState("Loading jailbreak...", "warn"); 
-        var target = "load.html" + location.search;
-        if(payload) {
-            target += (target.indexOf('?') === -1 ? '?' : '&') + "payload=" + payload;
-        }
-        location.replace(target); 
+    function go(payload) {
+        setState("Loading jailbreak...", "warn");
+        var options = new URLSearchParams(location.search || location.hash.slice(1));
+        if (payload) options.set("payload", payload);
+        var query = options.toString();
+        location.replace("load.html" + (query ? "#" + query : ""));
     }
-
-    // Displays the buttons for user interaction
     function showPicker(isSupported) {
         var picker = $("picker");
         var container = $("btn-container");
         var ptitle = $("picker-title");
-        
+
         picker.style.display = "block";
-        container.innerHTML = ""; 
+        container.innerHTML = "";
 
         if (!isSupported) {
             setState("Unsupported firmware", "err");
             ptitle.textContent = "Unsupported (" + (key || "unknown") + ")";
-            
+
             var btn = document.createElement("button");
             btn.className = "btn ghost";
             btn.textContent = "Run Anyway";
@@ -150,29 +136,23 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
         } else {
             setState("Ready", "ok");
             ptitle.textContent = "Choose Payload (Press X)";
-            
-            // GoldHEN button (Only enabled for 13.52)
             var btnGH = document.createElement("button");
             btnGH.className = "btn";
-            
+
             if (fwnum === 1352) {
                 btnGH.textContent = "GoldHEN";
                 btnGH.onclick = function() { go("goldhen"); };
             } else {
                 btnGH.textContent = "GoldHEN";
-                btnGH.disabled = true; // This triggers the CSS we added above
+                btnGH.disabled = true;
             }
-            
-            // HEN button
             var btnHen = document.createElement("button");
             btnHen.className = "btn ghost";
             btnHen.textContent = "HEN";
             btnHen.onclick = function() { go("hen"); };
-            
+
             container.appendChild(btnGH);
             container.appendChild(btnHen);
-            
-            // Automatically focus the correct button so the D-pad selects it instantly
             if (fwnum === 1352) {
                 btnGH.focus();
             } else {
@@ -180,18 +160,16 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
             }
         }
     }
-
-    // Handles edge-case where cache is freshly updated and requires a page reload
     function promptReload() {
         setState("Update Ready", "warn");
         var picker = $("picker");
         var container = $("btn-container");
         var ptitle = $("picker-title");
-        
+
         picker.style.display = "block";
         ptitle.textContent = "Cache Updated";
         container.innerHTML = "";
-        
+
         var btn = document.createElement("button");
         btn.className = "btn";
         btn.textContent = "Reload Page";
@@ -200,52 +178,44 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
         btn.focus();
     }
 
-    // If unsupported, skip the cache checks and let them click "Run Anyway"
-    if (!supported) {
-        showPicker(false);
-        return;
-    }
-
     var ac = window.applicationCache;
-    if (!ac || !document.documentElement.hasAttribute("manifest")) {
-        showPicker(true);
-    } else if (!navigator.onLine) {
-        setCache("offline -- from cache", true);
-        showPicker(true);
-    } else if (ac.status === ac.IDLE) {
-        setCache("cached", true);
-        showPicker(true);
-    } else if (ac.status === ac.UPDATEREADY) {
+    function cacheReady() {
+        setCache("cached -- offline ready", true);
+        showPicker(supported);
+    }
+    function cacheError() {
+        if (ac.status === ac.IDLE) return cacheReady();
+        setCache("cache unavailable -- reconnect and reload", false);
+        showPicker(supported);
+    }
+    function cacheUpdated() {
         try { ac.swapCache(); } catch (e) {}
         setCache("update downloaded", true);
         promptReload();
+    }
+    function cacheDownloading() {
+        setCache("caching for offline...", false);
+        $("picker").style.display = "none";
+    }
+    if (!ac) {
+        setCache("offline caching not supported", false);
+        showPicker(supported);
     } else {
-        setCache("checking cache...", false);
-        ac.addEventListener("downloading", function () { setCache("caching for offline...", false); }, false);
+        ac.addEventListener("downloading", cacheDownloading, false);
         ac.addEventListener("progress", function (e) {
-            if (e && e.total) setCache("caching " + Math.round((e.loaded / e.total) * 100) + "%", false);
+            if (e && e.total) setCache("caching " + Math.round(e.loaded / e.total * 100) + "%", false);
         }, false);
-        ac.addEventListener("cached", function () {
-            setCache("cached for offline use", true);
-            showPicker(true);
-        }, false);
-        ac.addEventListener("updateready", function () {
-            try { ac.swapCache(); } catch (e) {}
-            setCache("update downloaded", true);
-            promptReload();
-        }, false);
-        ac.addEventListener("noupdate", function () {
-            setCache("cached -- offline ready", true);
-            showPicker(true);
-        }, false);
-        ac.addEventListener("error", function () {
-            setCache("cache unavailable", false);
-            showPicker(true); // Still let them run it
-        }, false);
-        ac.addEventListener("obsolete", function () {
-            setCache("cache obsolete", false);
-            showPicker(true);
-        }, false);
+        ac.addEventListener("cached", cacheReady, false);
+        ac.addEventListener("noupdate", cacheReady, false);
+        ac.addEventListener("updateready", cacheUpdated, false);
+        ac.addEventListener("error", cacheError, false);
+        ac.addEventListener("obsolete", cacheError, false);
+
+        if (ac.status === ac.UPDATEREADY) cacheUpdated();
+        else if (ac.status === ac.IDLE) cacheReady();
+        else if (ac.status === ac.DOWNLOADING) cacheDownloading();
+        else if (!navigator.onLine || ac.status === ac.OBSOLETE) cacheError();
+        else setCache("checking cache...", false);
     }
 })();
 </script>

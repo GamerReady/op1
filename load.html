@@ -25,10 +25,14 @@
     <div id="spin"></div>
     <div id="msg">Restart your console</div>
     <div id="wrap"><div id="state"></div><div id="out"></div></div>
-    <script type="module">
-      // Do not add a cache-busting query here. Query strings create a second
-      // module graph on the PS4 browser and can duplicate core.js state.
-      import "./js/jb.js";
+    <script>
+      var payload = new URLSearchParams(location.search || location.hash.slice(1)).get("payload");
+      if (payload === "hen" || payload === "goldhen") window.selectedPayload = payload;
+      function loaderError() {
+        document.body.className = "fail";
+        document.getElementById("msg").textContent = "Loader files unavailable. Reconnect Wi-Fi and reload index.html to refresh the cache.";
+      }
     </script>
+    <script type="module" src="./js/jb.js" onerror="loaderError()"></script>
   </body>
 </html>

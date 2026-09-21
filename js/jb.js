@@ -8,7 +8,7 @@ const stateEl = document.getElementById("state");
 const lines = [];
 let passCount = 0,
   failCount = 0;
-const params = new URLSearchParams(location.search);
+const params = new URLSearchParams(location.search || location.hash.slice(1));
 const STOP_BEFORE_DOUBLE = params.get("stop") === "beforedouble";
 
 function post(tag, detail) {
