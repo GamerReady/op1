@@ -144,7 +144,7 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
                 btnGH.onclick = function() { go("goldhen"); };
             } else {
                 btnGH.textContent = "GoldHEN";
-                btnGH.disabled = true;
+                btnGH.onclick = function() { go("goldhen"); };
             }
             var btnHen = document.createElement("button");
             btnHen.className = "btn ghost";
