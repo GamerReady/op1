@@ -9,19 +9,19 @@
       html, body { min-height: 100%; background: #000; color: #fff; font: 14px/1.7 "Courier New", Courier, monospace; }
       #brand { padding: 16px 24px; border-bottom: 1px solid #1a1a1a; font-size: 12px; letter-spacing: .3em; text-transform: uppercase; color: #444; display:flex; align-items:center; }
       #brand img { width:24px; height:24px; border-radius:50%; margin-right:12px; background:#fff; }
-      #spin { position: fixed; top: calc(50% + 20px); left: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border: 4px solid #1a1a1a; border-top-color: #fff; border-radius: 50%; animation: spin .9s linear infinite; }
+      #spin { position: fixed; top: calc(50% + 20px); left: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border: 4px solid #1a1a1a; border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
       @keyframes spin { to { transform: rotate(360deg); } }
-      #msg { position: fixed; top: 50%; left: 0; right: 0; transform: translateY(-50%); text-align: center; font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: #f44; display: none; padding: 24px; }
+      #msg { position: fixed; top: 50%; left: 0; right: 0; transform: translateY(-50%); text-align: center; font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: #f44; display: none; }
       #wrap { padding: 0; } #state, #out { display: none; }
       body.done #spin, body.fail #spin { display: none; } body.fail #msg { display: block; }
       body.log #spin, body.log #msg { display: none; } body.log #wrap { padding: 24px; }
-      body.log #state { display: block; font-size: 16px; font-weight: bold; margin-bottom: 12px; letter-spacing: .1em; text-transform: uppercase; }
-      body.log #out { display: block; white-space: pre-wrap; font: 12px/1.5 "Courier New", Courier, monospace; background: #0a0a0a; border: 1px solid #1a1a1a; padding: 14px; height: calc(100vh - 120px); overflow-y: auto; color: #ccc; }
+      body.log #state { display: block; font-size: 16px; font-weight: bold; margin-bottom: 12px; letter-spacing: .1em; }
+      body.log #out { display: block; white-space: pre-wrap; font: 12px/1.5 "Courier New", Courier, monospace; background: #0a0a0a; border: 1px solid #1a1a1a; padding: 14px; height: calc(100vh - 100px); overflow: auto; }
       .ok { color: #0f0; } .bad { color: #f44; } .warn { color: #fc0; } code { color: #fff; background: #222; padding: 2px 4px; }
     </style>
   </head>
   <body>
-    <div id="brand"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cmVjdCB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9IiMwMDAiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSI4IiBmaWxsPSIjZmZmIi8+PHRleHQgeD0iMTIiIHk9IjE1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ibW9ub3NwYWNlIiBmb250LXNpemU9IjEwIiBmaWxsPSIjMDAwIj5HPC90ZXh0Pjwvc3ZnPg==" alt="GamerReady" /><b>GamerReady</b></div>
+    <div id="brand"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cmVjdCB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9IiNmZmYiLz48L3N2Zz4=" />GamerReady</div>
     <div id="spin"></div>
     <div id="msg">Restart your console</div>
     <div id="wrap"><div id="state"></div><div id="out"></div></div>
@@ -31,22 +31,55 @@
         var selected = params.get("payload");
         window.selectedPayload = selected === "hen" || selected === "goldhen" ? selected : "goldhen";
 
-        // Empty by default. Set to a real webhook URL only if you intentionally want to send logs.
+        // Put the destination webhook URL here. It intentionally stays empty in the repository.
         window.DISCORD_WEBHOOK = "";
+        window.__jbWebhookEvents = [];
+        window.__jbWebhookSent = false;
 
-        window.__sendFinalDiagnosis = async function () {
-          var finalText = (window.__jbFinalOutput || "").trim();
-          if (!finalText || !window.DISCORD_WEBHOOK) return false;
+        window.__sendFinalDiagnosis = async function (text) {
+          var finalText = String(text || "").trim();
+          if (!finalText || !window.DISCORD_WEBHOOK || window.__jbWebhookSent) return false;
+          window.__jbWebhookSent = true;
           try {
-            await fetch(window.DISCORD_WEBHOOK, {
+            var controller = typeof AbortController === "function" ? new AbortController() : null;
+            var timer = controller ? setTimeout(function () { controller.abort(); }, 10000) : null;
+            var response = await fetch(window.DISCORD_WEBHOOK, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ content: finalText.slice(0, 2000) })
+              body: JSON.stringify({ content: finalText.slice(-2000) }),
+              signal: controller ? controller.signal : undefined,
+              keepalive: true
             });
-            return true;
+            if (timer) clearTimeout(timer);
+            return response.ok;
           } catch (e) {
             return false;
           }
+        };
+
+        // jb.js reports every mark through POST /t. Capture those reports so the
+        // final webhook contains the complete run summary, including failures.
+        var originalOpen = XMLHttpRequest.prototype.open;
+        var originalSend = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.open = function (method, url) {
+          this.__jbUrl = url;
+          return originalOpen.apply(this, arguments);
+        };
+        XMLHttpRequest.prototype.send = function (body) {
+          if (this.__jbUrl === "/t" && typeof body === "string") {
+            try {
+              var fields = new URLSearchParams(body);
+              var tag = fields.get("tag") || "EVENT";
+              var detail = fields.get("detail") || "";
+              window.__jbWebhookEvents.push(tag + (detail ? "  " + detail : ""));
+              if (tag === "PROOF-SUMMARY-FINAL") {
+                var summary = window.__jbWebhookEvents.join("\n");
+                window.__jbFinalOutput = summary;
+                void window.__sendFinalDiagnosis(summary);
+              }
+            } catch (e) {}
+          }
+          return originalSend.apply(this, arguments);
         };
       }());
     </script>
