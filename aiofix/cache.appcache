@@ -1,0 +1,27 @@
+CACHE MANIFEST
+# gamerready-aiofix-20260926-1
+
+./
+index.html
+load.html
+load.html?payload=hen
+load.html?payload=hen&log=1
+load.html?payload=goldhen
+load.html?payload=goldhen&log=1
+rpc_worker.js
+js/jb.js
+js/jb.js?v=19
+js/core.js
+js/core.js?v=10
+js/mem.js
+js/int64.js
+js/ps4_offsets.js
+js/rpc_worker.js
+bin/hen.bin
+bin/goldhen.bin
+bin/kpatches/1302-aiofix.bin
+bin/kpatches/1350-aiofix.bin
+bin/kpatches/1352-aiofix.bin
+
+NETWORK:
+*
