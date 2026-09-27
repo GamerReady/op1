@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en" manifest="../cache.appcache">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GamerReady | Legacy Firmware</title>
+  <style>
+    html,body{height:100%;margin:0;background:#000;color:#fff;font:14px/1.55 "Courier New",monospace}
+    #wrap{max-width:760px;margin:0 auto;padding:24px 18px}
+    #brand{font-size:12px;letter-spacing:.2em;color:#777;text-transform:uppercase;margin-bottom:18px}
+    #msgs,#state{font-size:18px;font-weight:bold;margin:0 0 10px;color:#fc0}
+    #out{white-space:pre-wrap;overflow:auto;min-height:9rem;max-height:65vh;padding:12px;background:#0c0c0c;border:1px solid #222}
+    .ok{color:#0f0}.bad{color:#f44}.warn{color:#fc0}
+  </style>
+</head>
+<body>
+  <main id="wrap">
+    <div id="brand">GamerReady · Legacy AIOFIX</div>
+    <div id="msgs">Detecting firmware…</div>
+    <div id="state">Preparing compatible engine…</div>
+    <pre id="out"></pre>
+    <p><a href="THIRD_PARTY_NOTICES.md" style="color:#777">Source and notices</a></p>
+  </main>
+  <script>
+  (function () {
+    var match = /PlayStation\s+4[\/ ](\d+)\.(\d+)/.exec(navigator.userAgent || "");
+    var key = null;
+    if (match) {
+      var minor = parseInt(match[2], 16).toString(16);
+      key = match[1] + "." + minor.padStart(2, "0");
+    }
+
+    var engine = {
+      "7.00": { type: "module", src: "700/alert.js", name: "PSFree 7.x / 8.x" },
+      "7.01": { type: "module", src: "700/alert.js", name: "PSFree 7.x / 8.x" },
+      "7.02": { type: "module", src: "700/alert.js", name: "PSFree 7.x / 8.x" },
+      "7.50": { type: "module", src: "700/alert.js", name: "PSFree 7.x / 8.x" },
+      "7.51": { type: "module", src: "700/alert.js", name: "PSFree 7.x / 8.x" },
+      "7.55": { type: "module", src: "700/alert.js", name: "PSFree 7.x / 8.x" },
+      "8.00": { type: "module", src: "700/alert.js", name: "PSFree 7.x / 8.x" },
+      "8.01": { type: "module", src: "700/alert.js", name: "PSFree 7.x / 8.x" },
+      "8.03": { type: "module", src: "700/alert.js", name: "PSFree 7.x / 8.x" },
+      "8.50": { type: "module", src: "700/alert.js", name: "PSFree 7.x / 8.x" },
+      "8.52": { type: "module", src: "700/alert.js", name: "PSFree 7.x / 8.x" },
+      "9.00": { type: "module", src: "900/alert.js", name: "PSFree 9.x" },
+      "9.03": { type: "module", src: "900/alert.js", name: "PSFree 9.x" },
+      "9.04": { type: "module", src: "900/alert.js", name: "PSFree 9.x" },
+      "9.50": { type: "module", src: "900/alert.js", name: "PSFree 9.x" },
+      "9.51": { type: "module", src: "900/alert.js", name: "PSFree 9.x" },
+      "9.60": { type: "module", src: "900/alert.js", name: "PSFree 9.x" },
+      "10.00": { type: "css", name: "GamerHack CSS" },
+      "10.01": { type: "css", name: "GamerHack CSS" },
+      "10.50": { type: "css", name: "GamerHack CSS" },
+      "10.70": { type: "css", name: "GamerHack CSS" },
+      "10.71": { type: "css", name: "GamerHack CSS" },
+      "11.02": { type: "css", name: "GamerHack CSS" },
+      "11.00": { type: "slopkit", src: "chain_lapse.js", name: "rawgame4 lapse" },
+      "11.50": { type: "slopkit", src: "chain_lapse.js", name: "rawgame4 lapse" },
+      "12.00": { type: "slopkit", src: "chain_lapse.js", name: "rawgame4 lapse" },
+      "12.02": { type: "slopkit", src: "chain_lapse.js", name: "rawgame4 lapse" },
+      "12.50": { type: "slopkit", src: "chain_poops.js", name: "rawgame4 poops" },
+      "12.52": { type: "slopkit", src: "chain_poops.js", name: "rawgame4 poops" },
+      "13.00": { type: "slopkit", src: "chain_poops.js", name: "rawgame4 poops" }
+    }[key];
+
+    var msg = document.getElementById("msgs");
+    var state = document.getElementById("state");
+    if (!engine) {
+      msg.textContent = "Unsupported legacy firmware: " + (key || "unknown");
+      msg.className = "bad";
+      state.textContent = "Return to AIOFIX and use a supported firmware.";
+      state.className = "bad";
+      return;
+    }
+
+    msg.textContent = "PS4 " + key + " · " + engine.name;
+    state.textContent = "Loading GoldHEN exploit chain…";
+    state.className = "warn";
+
+    if (engine.type === "slopkit") {
+      var base = document.createElement("base");
+      base.href = "./slopkit/";
+      document.head.appendChild(base);
+    }
+
+    var script = document.createElement("script");
+    script.src = engine.src || "css/main.js";
+    if (engine.type === "module" || engine.type === "slopkit") script.type = "module";
+    script.onerror = function () {
+      state.textContent = "Engine files are unavailable. Reconnect, refresh AIOFIX, then retry.";
+      state.className = "bad";
+    };
+    if (engine.type === "css") {
+      script.onload = function () {
+        if (typeof doJb === "function") doJb();
+        else script.onerror();
+      };
+    }
+    document.head.appendChild(script);
+  })();
+  </script>
+</body>
+</html>
