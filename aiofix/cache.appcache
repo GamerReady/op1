@@ -1,5 +1,5 @@
 CACHE MANIFEST
-# gamerready-aiofix-20260927-legacy-fw-1
+# gamerready-aiofix-20260927-unified-ui-2
 
 CACHE:
 ./
@@ -9,24 +9,20 @@ load.html?payload=hen
 load.html?payload=hen&log=1
 load.html?payload=goldhen
 load.html?payload=goldhen&log=1
-rpc_worker.js
-js/jb.js
-js/jb.js?v=19
-js/core.js
-js/core.js?v=10
-js/mem.js
-js/int64.js
-js/ps4_offsets.js
-js/rpc_worker.js
-bin/hen.bin
-bin/goldhen.bin
+../bin/hen.bin
+../bin/goldhen.bin
 bin/kpatches/1302-aiofix.bin
 bin/kpatches/1350-aiofix.bin
 bin/kpatches/1352-aiofix.bin
+js/core.js
+js/int64.js
+js/jb.js
+js/mem.js
+js/ps4_offsets.js
+js/rpc_worker.js
 legacy/505/exploit.js
-legacy/505/index.html
+legacy/672/boot.js
 legacy/672/exp_loader.js
-legacy/672/index.html
 legacy/672/jb.js
 legacy/700/alert.js
 legacy/700/config.js
@@ -75,7 +71,6 @@ legacy/900/module/view.js
 legacy/900/psfree.js
 legacy/900/rop/900.js
 legacy/900/rop/950.js
-legacy/THIRD_PARTY_NOTICES.md
 legacy/css/lapse.js
 legacy/css/loader.js
 legacy/css/main.js
@@ -89,13 +84,9 @@ legacy/css/ps4/patches/1102.bin
 legacy/css/ps4/userland.js
 legacy/css/worker.js
 legacy/css/workers.js
-legacy/host.css
-legacy/index.html
-legacy/licenses/rawgame4-MIT.txt
 legacy/slopkit/chain_lapse.js
 legacy/slopkit/chain_poops.js
 legacy/slopkit/core.js
-legacy/slopkit/core.js?v=10
 legacy/slopkit/int64.js
 legacy/slopkit/mem.js
 legacy/slopkit/patches/1100.bin
@@ -103,7 +94,6 @@ legacy/slopkit/patches/1150.bin
 legacy/slopkit/patches/1200.bin
 legacy/slopkit/patches/1250.bin
 legacy/slopkit/patches/1300.bin
-legacy/slopkit/payload.bin
 legacy/slopkit/ps4_offsets.js
 legacy/slopkit/rpc_worker.js
 

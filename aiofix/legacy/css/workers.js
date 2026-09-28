@@ -10,7 +10,7 @@ class RPCWorker {
     this.transfer = [];
     this.promises = new Map();
 
-    this.worker = new Worker("css/worker.js");
+    this.worker = new Worker("legacy/css/worker.js");
 
     this.worker.onerror = (e) => {
       logger.error("Worker onerror: " + (e.message || "fail"));

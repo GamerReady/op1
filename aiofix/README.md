@@ -1,60 +1,55 @@
-# GamerReady AIOFIX
+# GamerReady AIO Fix
 
-`aiofix/` is a self-contained PS4 browser host. It detects the PS4 firmware
-from the browser User-Agent and routes to the matching implementation. The
-modern 13.x AIOFIX path is unchanged; older firmware families are isolated
-under `aiofix/legacy/` so their incompatible exploit primitives, kernel patches,
-and workers cannot collide with it.
+`aiofix/` is the all-in-one PS4 browser host. It uses **exactly the same UI
+and payload selector as the main host at the repository root**: one picker
+page, one loader page, one look — no matter which firmware the console runs.
+Every supported firmware gets the GoldHEN / HEN choice.
 
-## Supported firmware routes
+## How it works
 
-| Firmware | Engine | Payload choice |
-| --- | --- | --- |
-| 5.05, 5.07 | GamerHack 5.05 engine | GoldHEN |
-| 6.72 | GamerHack 6.72 engine | GoldHEN |
-| 7.00, 7.01, 7.02, 7.50, 7.51, 7.55 | GamerHack PSFree 7.x engine | GoldHEN |
-| 8.00, 8.01, 8.03, 8.50, 8.52 | GamerHack PSFree 8.x engine | GoldHEN |
-| 9.00, 9.03, 9.04, 9.50, 9.51, 9.60 | GamerHack PSFree 9.x engine | GoldHEN |
-| 10.00, 10.01, 10.50, 10.70, 10.71 | GamerHack CSS engine | GoldHEN |
-| 11.00 | rawgame4 `lapse` | rawgame4 payload |
-| 11.02 | GamerHack CSS engine | GoldHEN |
-| 11.50, 12.00, 12.02 | rawgame4 `lapse` | rawgame4 payload |
-| 12.50, 12.52, 13.00 | rawgame4 `poops` | rawgame4 payload |
-| 13.02, 13.04, 13.50, 13.52 | AIOFIX hardened 13.x engine | GoldHEN or HEN |
+- `index.html` detects the firmware, offers **GoldHEN** or **HEN**, and opens
+  `load.html` with the choice.
+- `load.html` is the single loader page. It picks the matching exploit engine
+  for the firmware and runs it. Engines report through hidden status hooks, so
+  the spinner / success / failure screens are identical for every version,
+  just like the main host. Add `?log=1` (or `#log=1`) to watch the engine log
+  on engines that support it; add `force=1` to force the 13.x loader.
 
-Routes are deliberately exact. An unlisted intermediary firmware is shown as
-unsupported instead of being sent to a similar-looking offset table. The
-legacy engines use GoldHEN where their upstream hosts used it; only the
-existing 13.x AIOFIX engine presents the HEN/GoldHEN selector.
+## Supported firmware
+
+| Firmware | Engine path |
+| --- | --- |
+| 5.05, 5.07 | `legacy/505/` |
+| 6.72 | `legacy/672/` |
+| 7.00–7.55, 8.00–8.52 | `legacy/700/` |
+| 9.00–9.60 | `legacy/900/` |
+| 10.00–10.71, 11.02 | `legacy/css/` |
+| 11.00–12.02 | `legacy/slopkit/` (lapse) |
+| 12.50–13.00 | `legacy/slopkit/` (poops) |
+| 13.02–13.52 | `js/` (hardened 13.x loader) |
+
+Routes are exact: an unlisted intermediary firmware shows as unsupported
+instead of being sent to a similar-looking offset table.
 
 ## Layout
 
-- `index.html` — firmware dispatcher and offline-cache entry point.
-- `load.html`, `js/`, `bin/kpatches/` — retained AIOFIX 13.02–13.52 engine.
-- `legacy/505/`, `legacy/672/` — GamerHack’s dedicated 5.05/5.07 and 6.72
-  engines.
-- `legacy/700/`, `legacy/900/`, `legacy/css/` — GamerHack PSFree/CSS runtime
-  trees. Only files used by the selected runtime are included.
-- `legacy/slopkit/` — rawgame4’s compact 11.00–13.00 `lapse`/`poops` engine
-  and its five patch blobs.
-- `legacy/THIRD_PARTY_NOTICES.md` — upstream attribution and licensing notes.
-
-The legacy engines reuse the existing `bin/goldhen.bin` whenever the source
-host shipped the identical GoldHEN v2.4b18.12 payload. This avoids duplicate
-payload binaries while keeping each engine’s code and patch assets grouped.
+- `index.html` — picker page (UI identical to the root host).
+- `load.html` — unified loader and engine dispatcher (UI identical to root).
+- `js/` — current 13.02–13.52 engine plus its offsets and worker.
+- `bin/kpatches/` — AIO Fix kernel-patch blobs for the 13.x engine.
+- `legacy/` — engines for older firmware families only; no separate pages,
+  styles, or documents. Payloads are loaded from the shared `../bin/`
+  (`goldhen.bin` / `hen.bin`) so there is exactly one copy of each payload in
+  the repository.
 
 ## Offline use
 
-`cache.appcache` includes every runtime file used by every route. Refresh the
-AIOFIX index page while online and allow the cache to complete before relying
-on it offline. A cache update asks for a page reload so a route cannot run with
-a mixed old/new asset set.
+`cache.appcache` lists every runtime file used by every route, including the
+shared payloads in `../bin/`. Refresh the index page while online and allow
+caching to complete before going offline. A cache update asks for a page
+reload so no run mixes old and new assets.
 
-## Sources and attribution
+## Notes
 
-- Lower 11.00–13.00 support: [rawgame4/rawgame4.github.io](https://github.com/rawgame4/rawgame4.github.io)
-- Older engine families: [GamerHack/GamerHack.github.io](https://github.com/GamerHack/GamerHack.github.io)
-
-See `legacy/THIRD_PARTY_NOTICES.md` and the copied upstream license for the
-applicable terms. Exploit attempts can crash the browser or console; use only
-on hardware you own and keep important data backed up.
+Exploit attempts can crash the browser or console; use only on hardware you
+own and keep important data backed up.

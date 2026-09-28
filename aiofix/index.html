@@ -82,44 +82,19 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
         var cls = c === "warn" ? "warn" : c === "bad" ? "err" : c === "ok" ? "ok" : "";
         set("v-st", t, cls);
     }
-    function setCache(t, ok) { set("v-cache", t, ok ? "ok" : "dim"); }
+    function setCache(t, ok) {
+        set("v-cache", t, ok ? "ok" : "dim");
+    }
 
     var params = new URLSearchParams(location.search);
-    var current = { 1302: 1, 1304: 1, 1350: 1, 1352: 1 };
-    var routes = {
-        505:  { path: "legacy/505/index.html", name: "GamerHack 5.05 engine" },
-        507:  { path: "legacy/505/index.html", name: "GamerHack 5.05 engine" },
-        672:  { path: "legacy/672/index.html", name: "GamerHack 6.72 engine" },
-        700:  { path: "legacy/index.html", name: "PSFree 7.x / 8.x engine" },
-        701:  { path: "legacy/index.html", name: "PSFree 7.x / 8.x engine" },
-        702:  { path: "legacy/index.html", name: "PSFree 7.x / 8.x engine" },
-        750:  { path: "legacy/index.html", name: "PSFree 7.x / 8.x engine" },
-        751:  { path: "legacy/index.html", name: "PSFree 7.x / 8.x engine" },
-        755:  { path: "legacy/index.html", name: "PSFree 7.x / 8.x engine" },
-        800:  { path: "legacy/index.html", name: "PSFree 7.x / 8.x engine" },
-        801:  { path: "legacy/index.html", name: "PSFree 7.x / 8.x engine" },
-        803:  { path: "legacy/index.html", name: "PSFree 7.x / 8.x engine" },
-        850:  { path: "legacy/index.html", name: "PSFree 7.x / 8.x engine" },
-        852:  { path: "legacy/index.html", name: "PSFree 7.x / 8.x engine" },
-        900:  { path: "legacy/index.html", name: "PSFree 9.x engine" },
-        903:  { path: "legacy/index.html", name: "PSFree 9.x engine" },
-        904:  { path: "legacy/index.html", name: "PSFree 9.x engine" },
-        950:  { path: "legacy/index.html", name: "PSFree 9.x engine" },
-        951:  { path: "legacy/index.html", name: "PSFree 9.x engine" },
-        960:  { path: "legacy/index.html", name: "PSFree 9.x engine" },
-        1000: { path: "legacy/index.html", name: "GamerHack CSS engine" },
-        1001: { path: "legacy/index.html", name: "GamerHack CSS engine" },
-        1050: { path: "legacy/index.html", name: "GamerHack CSS engine" },
-        1070: { path: "legacy/index.html", name: "GamerHack CSS engine" },
-        1071: { path: "legacy/index.html", name: "GamerHack CSS engine" },
-        1100: { path: "legacy/index.html", name: "rawgame4 lapse engine" },
-        1102: { path: "legacy/index.html", name: "GamerHack CSS engine" },
-        1150: { path: "legacy/index.html", name: "rawgame4 lapse engine" },
-        1200: { path: "legacy/index.html", name: "rawgame4 lapse engine" },
-        1202: { path: "legacy/index.html", name: "rawgame4 lapse engine" },
-        1250: { path: "legacy/index.html", name: "rawgame4 poops engine" },
-        1252: { path: "legacy/index.html", name: "rawgame4 poops engine" },
-        1300: { path: "legacy/index.html", name: "rawgame4 poops engine" }
+    var SUPPORTED = {
+        505: 1, 507: 1, 672: 1,
+        700: 1, 701: 1, 702: 1, 750: 1, 751: 1, 755: 1,
+        800: 1, 801: 1, 803: 1, 850: 1, 852: 1,
+        900: 1, 903: 1, 904: 1, 950: 1, 951: 1, 960: 1,
+        1000: 1, 1001: 1, 1050: 1, 1070: 1, 1071: 1,
+        1100: 1, 1102: 1, 1150: 1, 1200: 1, 1202: 1,
+        1250: 1, 1252: 1, 1300: 1, 1302: 1, 1304: 1, 1350: 1, 1352: 1
     };
 
     var key = null, fwnum = null;
@@ -131,117 +106,147 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
         fwnum = parseInt(m[1], 10) * 100 + parseInt(ms, 10);
     }
 
-    var forceCurrent = params.get("force") === "1";
-    var route = fwnum !== null && routes[fwnum] ? routes[fwnum] : null;
-    var isCurrent = fwnum !== null && current[fwnum] === 1;
-    var supported = forceCurrent || isCurrent || route !== null;
+    var forced = params.get("force") === "1";
+    var supported = forced || (fwnum !== null && SUPPORTED[fwnum] === 1);
 
     set("v-fw", key || "Not a PS4", key ? "ok" : "err");
     set("v-sup", supported ? "Supported" : "Not supported", supported ? "ok" : "err");
-    if (route) $("note").textContent = "Automatic route: " + route.name + ".";
 
     function go(payload) {
-        setState("Loading jailbreak…", "warn");
-        if (route && !forceCurrent) {
-            location.replace(route.path);
-            return;
-        }
+        setState("Loading jailbreak...", "warn");
         var options = new URLSearchParams(location.search || location.hash.slice(1));
         if (payload) options.set("payload", payload);
         var query = options.toString();
         location.replace("load.html" + (query ? "#" + query : ""));
     }
 
-    function addButton(container, cls, text, onClick) {
-        var btn = document.createElement("button");
-        btn.className = cls;
-        btn.textContent = text;
-        btn.onclick = onClick;
-        container.appendChild(btn);
-        return btn;
-    }
-
-    function showPicker() {
+    function showPicker(isSupported) {
         var picker = $("picker");
         var container = $("btn-container");
         var ptitle = $("picker-title");
+
         picker.style.display = "block";
         container.innerHTML = "";
 
-        if (!supported) {
+        if (!isSupported) {
             setState("Unsupported firmware", "err");
             ptitle.textContent = "Unsupported (" + (key || "unknown") + ")";
-            var unsafe = addButton(container, "btn ghost", "Run Current Loader Anyway", function () { go(); });
-            unsafe.focus();
-            return;
-        }
 
-        setState("Ready", "ok");
-        if (route && !forceCurrent) {
-            ptitle.textContent = "GoldHEN · Press X";
-            var legacy = addButton(container, "btn", "GoldHEN", function () { go(); });
-            legacy.focus();
-            return;
-        }
+            var btn = document.createElement("button");
+            btn.className = "btn ghost";
+            btn.textContent = "Run Anyway";
+            btn.onclick = function () { go(); };
+            container.appendChild(btn);
+            btn.focus();
+        } else {
+            setState("Ready", "ok");
+            ptitle.textContent = "Choose Payload (Press X)";
 
-        ptitle.textContent = "Choose Payload · Press X";
-        var goldhen = addButton(container, "btn", "GoldHEN", function () { go("goldhen"); });
-        var hen = addButton(container, "btn ghost", "HEN", function () { go("hen"); });
-        goldhen.setAttribute("tabindex", "1");
-        hen.setAttribute("tabindex", "2");
-        function handleNav(e) {
-            if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-                if (document.activeElement === goldhen) { e.preventDefault(); hen.focus(); }
-            } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-                if (document.activeElement === hen) { e.preventDefault(); goldhen.focus(); }
+            /* ── GoldHEN (default, always focused first) ── */
+            var btnGH = document.createElement("button");
+            btnGH.className = "btn";
+            btnGH.textContent = "GoldHEN";
+            btnGH.setAttribute("tabindex", "1");
+            btnGH.onclick = function () { go("goldhen"); };
+
+            /* ── HEN (only reachable by navigating right / sliding pad) ── */
+            var btnHen = document.createElement("button");
+            btnHen.className = "btn ghost";
+            btnHen.textContent = "HEN";
+            btnHen.setAttribute("tabindex", "2");
+            btnHen.onclick = function () { go("hen"); };
+
+            container.appendChild(btnGH);
+            container.appendChild(btnHen);
+
+            /*
+             * Always focus GoldHEN regardless of firmware version.
+             * On PS4 the controller's X button fires as Enter/Space
+             * on the currently focused element, so pressing X with
+             * no prior navigation will always trigger GoldHEN.
+             * The user must press Right on the D-pad / swipe the
+             * touchpad to move focus to HEN before pressing X.
+             */
+            btnGH.focus();
+
+            /*
+             * Keyboard trap: arrow-key / D-pad navigation between
+             * the two buttons so the PS4 controller works correctly.
+             */
+            function handleNav(e) {
+                var focused = document.activeElement;
+                if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+                    e.preventDefault();
+                    if (focused === btnGH) { btnHen.focus(); }
+                } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+                    e.preventDefault();
+                    if (focused === btnHen) { btnGH.focus(); }
+                }
             }
+
+            btnGH.addEventListener("keydown", handleNav);
+            btnHen.addEventListener("keydown", handleNav);
         }
-        goldhen.addEventListener("keydown", handleNav);
-        hen.addEventListener("keydown", handleNav);
-        goldhen.focus();
     }
 
     function promptReload() {
-        setState("Update ready", "warn");
-        var picker = $("picker"), container = $("btn-container"), ptitle = $("picker-title");
+        setState("Update Ready", "warn");
+        var picker = $("picker");
+        var container = $("btn-container");
+        var ptitle = $("picker-title");
+
         picker.style.display = "block";
-        ptitle.textContent = "Cache updated";
+        ptitle.textContent = "Cache Updated";
         container.innerHTML = "";
-        addButton(container, "btn", "Reload Page", function () { location.reload(); }).focus();
+
+        var btn = document.createElement("button");
+        btn.className = "btn";
+        btn.textContent = "Reload Page";
+        btn.onclick = function () { location.reload(); };
+        container.appendChild(btn);
+        btn.focus();
     }
 
     var ac = window.applicationCache;
-    function cacheReady() { setCache("cached — offline ready", true); showPicker(); }
+
+    function cacheReady() {
+        setCache("cached -- offline ready", true);
+        showPicker(supported);
+    }
     function cacheError() {
-        if (ac && ac.status === ac.IDLE) return cacheReady();
-        setCache("cache unavailable — reconnect and reload", false);
-        showPicker();
+        if (ac.status === ac.IDLE) return cacheReady();
+        setCache("cache unavailable -- reconnect and reload", false);
+        showPicker(supported);
     }
     function cacheUpdated() {
         try { ac.swapCache(); } catch (e) {}
         setCache("update downloaded", true);
         promptReload();
     }
-    function cacheDownloading() { setCache("caching for offline…", false); $("picker").style.display = "none"; }
+    function cacheDownloading() {
+        setCache("caching for offline...", false);
+        $("picker").style.display = "none";
+    }
 
     if (!ac) {
         setCache("offline caching not supported", false);
-        showPicker();
+        showPicker(supported);
     } else {
         ac.addEventListener("downloading", cacheDownloading, false);
         ac.addEventListener("progress", function (e) {
             if (e && e.total) setCache("caching " + Math.round(e.loaded / e.total * 100) + "%", false);
         }, false);
-        ac.addEventListener("cached", cacheReady, false);
-        ac.addEventListener("noupdate", cacheReady, false);
-        ac.addEventListener("updateready", cacheUpdated, false);
-        ac.addEventListener("error", cacheError, false);
-        ac.addEventListener("obsolete", cacheError, false);
-        if (ac.status === ac.UPDATEREADY) cacheUpdated();
-        else if (ac.status === ac.IDLE) cacheReady();
-        else if (ac.status === ac.DOWNLOADING) cacheDownloading();
+        ac.addEventListener("cached",      cacheReady,    false);
+        ac.addEventListener("noupdate",    cacheReady,    false);
+        ac.addEventListener("updateready", cacheUpdated,  false);
+        ac.addEventListener("error",       cacheError,    false);
+        ac.addEventListener("obsolete",    cacheError,    false);
+
+        if      (ac.status === ac.UPDATEREADY)  cacheUpdated();
+        else if (ac.status === ac.IDLE)         cacheReady();
+        else if (ac.status === ac.DOWNLOADING)  cacheDownloading();
         else if (!navigator.onLine || ac.status === ac.OBSOLETE) cacheError();
-        else setCache("checking cache…", false);
+        else setCache("checking cache...", false);
     }
 })();
 </script>
