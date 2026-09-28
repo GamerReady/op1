@@ -1,7 +1,7 @@
-// ?v=10 must match mem.js's specifier EXACTLY or core.js builds a second
+// The core.js specifier must match mem.js's EXACTLY or core.js builds a second
 // module record and releaseFakeCell() (only call site: mem.js:662) reaches a
 // virgin instance, pinning ~137 MB for the life of the page.
-import { establishPrimitive } from "./core.js?v=10";
+import { establishPrimitive } from "./core.js";
 import { installWindowP, pairStatus } from "./mem.js";
 import { int64 } from "./int64.js";
 import { offsetsFor } from "./ps4_offsets.js";
@@ -141,8 +141,8 @@ let allDone = false;
         let kpatch = null, payload = null;
         // off.kpatch wins when a firmware shares another's kernel and therefore
         // its blob -- 12.02 uses 1200.bin. Otherwise derive it from the key.
-        const kpatchName = off && off.kpatch ? "patches/" + off.kpatch
-            : key ? "patches/" + key.replace(".", "") + ".bin" : null;
+        const kpatchName = off && off.kpatch ? "legacy/slopkit/patches/" + off.kpatch
+            : key ? "legacy/slopkit/patches/" + key.replace(".", "") + ".bin" : null;
         const KPATCH_JMP_SITES = [];
         try {
             if (kpatchName) {
@@ -164,7 +164,7 @@ let allDone = false;
               + " sites=" + KPATCH_JMP_SITES.length
             : "blob=" + kpatchName + " MISSING");
         try {
-            const r = await fetch("payload.bin");
+            const r = await fetch(window.__AIOFIX_PAYLOAD_URL || "payload.bin");
             if (r.ok) payload = new Uint8Array(await r.arrayBuffer());
         } catch (e) { mark("PAYLOAD-FETCH-THREW", e.message); }
         mark("PAYLOAD-BLOB", payload
@@ -559,7 +559,7 @@ let allDone = false;
                 + (i < NUM_IOV_WORKER ? i : i - NUM_IOV_WORKER);
             const w = { name: name, armed: false, wired: false };
             workers.push(w);
-            w.worker = new Worker("rpc_worker.js");
+            w.worker = new Worker("legacy/slopkit/rpc_worker.js");
             w.rpc = makeRpc(w.worker, name);
             if ((await w.rpc("ping", 15000)) !== "pong")
                 throw new Error(name + " did not answer ping");

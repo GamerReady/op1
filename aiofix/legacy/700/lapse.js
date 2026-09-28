@@ -1,4 +1,4 @@
-/* AIOFIX adaptation (2026-09-27): reuse ../../bin/goldhen.bin instead of a duplicate payload. */
+/* AIO Fix: the payload is chosen on the picker page (shared ../bin/goldhen.bin or ../bin/hen.bin). */
 /* Copyright (C) 2025 anonymous
 
 This file is part of PSFree.
@@ -1866,7 +1866,7 @@ function runPayload(path) {
 
 kexploit().then(() => {
 	setTimeout(() => {
-		runPayload("../bin/goldhen.bin");
+		runPayload(window.__AIOFIX_PAYLOAD_URL || "../bin/goldhen.bin");
 		msgs.innerHTML = "GoldHEN v2.4b18.12 Loaded ...";
 	},500);
 }).catch(() => {

@@ -34,4 +34,4 @@ export const off_cpuid_to_pcpu = 0x212cd10;
 export const off_sysent_661 = 0x112d250;
 export const jmp_rsi = 0x6b192;
 
-export const patch_elf_loc = "./700/kpatch/700.elf";
+export const patch_elf_loc = "legacy/700/kpatch/700.elf";

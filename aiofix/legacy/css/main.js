@@ -1,4 +1,4 @@
-/* AIOFIX adaptation (2026-09-27): reuse ../../bin/goldhen.bin instead of a duplicate payload. */
+/* AIO Fix: the payload is chosen on the picker page (shared ../bin/goldhen.bin or ../bin/hen.bin). */
 function load_script(src, remote = true, transfer = []) {
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
@@ -10,14 +10,14 @@ function load_script(src, remote = true, transfer = []) {
 }
 
 async function doJb() {
-  await load_script("css/misc.js");
+  await load_script("legacy/css/misc.js");
 
   try {
     version.init();
     switch (version.console) {
       case 4:
-        await load_script("css/ps4/constants.js");
-        await load_script("css/ps4/userland.js");
+        await load_script("legacy/css/ps4/constants.js");
+        await load_script("legacy/css/ps4/userland.js");
         break;
       case 5:
         //TODO
@@ -39,12 +39,12 @@ async function doJb() {
 
     logger.info("===END===");
 
-    await load_script("css/loader.js");
-    await load_script("css/workers.js");
+    await load_script("legacy/css/loader.js");
+    await load_script("legacy/css/workers.js");
 
     switch (version.console) {
       case 4:
-        await load_script("css/ps4/kernel.js");
+        await load_script("legacy/css/ps4/kernel.js");
         break;
       case 5:
         //TODO
@@ -59,7 +59,7 @@ async function doJb() {
     }
 
     var exploitChain = localStorage.getItem("exploitChain") || "lapse";
-    await load_script("css/" + exploitChain + ".js");
+    await load_script("legacy/css/" + exploitChain + ".js");
     logger.info("===" + exploitChain.toUpperCase() + "===");
 
     try {
@@ -101,12 +101,12 @@ async function doJb() {
     if (fn.setuid.invoke(0) === -1) {
       jailbreak();
 
-      const kpatches_rsp = await fetch("css/ps4/patches/" + constants.KPATCH);
+      const kpatches_rsp = await fetch("legacy/css/ps4/patches/" + constants.KPATCH);
       const kpatches_buf = await kpatches_rsp.arrayBuffer();
       const kpatches_u8 = new Uint8Array(kpatches_buf);
       kernel_patches(kpatches_u8);
 
-      const bin_rsp = await fetch("../bin/goldhen.bin");
+      const bin_rsp = await fetch(window.__AIOFIX_PAYLOAD_URL || "../bin/goldhen.bin");
       const bin_buf = await bin_rsp.arrayBuffer();
       const bin_u8 = new Uint8Array(bin_buf);
       load_bin(bin_u8);

@@ -117,15 +117,134 @@
 
     <div id="wrap"><div id="state"></div><div id="out"></div></div>
 
+    <!-- Hidden status shims: legacy engines report through these elements.
+         They are never visible; an observer turns their status text into
+         the standard done/fail screens above. -->
+    <div id="msgs" hidden></div>
+    <span id="passCounter" hidden></span>
+    <span id="failCounter" hidden></span>
+
     <script>
-      var payload = new URLSearchParams(location.search || location.hash.slice(1)).get("payload");
+      // ES5 only: this page must boot on the oldest supported WebKit (5.05).
+      function param(name) {
+        var hay = location.search + "&" + location.hash.slice(1);
+        var m = new RegExp("[?&#]" + name + "=([^&#]*)").exec(hay);
+        return m ? decodeURIComponent(m[1]) : null;
+      }
+      var payload = param("payload");
       if (payload === "hen" || payload === "goldhen") window.selectedPayload = payload;
+      else payload = "goldhen";
+
+      // Payload file chosen on the picker page, shared by every engine.
+      window.__AIOFIX_PAYLOAD_URL = "../bin/" + payload + ".bin";
 
       function loaderError() {
         document.body.className = "fail";
         document.getElementById("msg").textContent = "Loader files unavailable. Reconnect Wi-Fi and reload index.html to refresh the cache.";
       }
+
+      // ---- status bridge --------------------------------------------------
+      // Engines signal completion either through #msgs ("... Loaded ..." /
+      // "Failed ...") or through #state (class "ok" / "bad"). Map both onto
+      // the same done/fail screens the current loader uses.
+      var settled = false;
+      function settle(ok) {
+        if (settled) return;
+        if (document.body.className === "log") return;
+        settled = true;
+        document.body.className = ok ? "done" : "fail";
+      }
+      function checkMsgs() {
+        var t = (document.getElementById("msgs").textContent || "");
+        if (/loaded/i.test(t)) settle(true);
+        else if (/failed/i.test(t)) settle(false);
+      }
+      function checkState() {
+        var el = document.getElementById("state");
+        if (!el) return;
+        if (el.className === "ok") settle(true);
+        else if (el.className === "bad") settle(false);
+      }
+      function wireStatusWatchers() {
+        if (window.MutationObserver) {
+          var mo = new MutationObserver(function () { checkMsgs(); checkState(); });
+          mo.observe(document.getElementById("msgs"), { childList: true, characterData: true, subtree: true });
+          mo.observe(document.getElementById("state"), { attributes: true, attributeFilter: ["class"], childList: true, characterData: true, subtree: true });
+        } else {
+          setInterval(function () { checkMsgs(); checkState(); }, 500);
+        }
+      }
+
+      // ---- firmware -> engine routing --------------------------------------
+      var fw = null;
+      var m = /PlayStation\s+4[\/ ](\d+)\.(\d+)/.exec(navigator.userAgent || "");
+      if (m) {
+        var minor = parseInt(m[2], 16).toString(16);
+        fw = parseInt(m[1], 10) * 100 + parseInt(minor, 10);
+      }
+
+      // force=1 always runs the current loader, whatever the firmware.
+      var CURRENT = { 1302: 1, 1304: 1, 1350: 1, 1352: 1 };
+      function engineFor(fw) {
+        if (param("force") === "1" || CURRENT[fw] === 1) return "current";
+        switch (fw) {
+          case 505: case 507: return "505";
+          case 672: return "672";
+          case 700: case 701: case 702:
+          case 750: case 751: case 755:
+          case 800: case 801: case 803:
+          case 850: case 852: return "legacy7";
+          case 900: case 903: case 904:
+          case 950: case 951: case 960: return "legacy9";
+          case 1000: case 1001: case 1050:
+          case 1070: case 1071: case 1102: return "css";
+          case 1100: case 1150: case 1200: case 1202: return "lapse";
+          case 1250: case 1252: case 1300: return "poops";
+        }
+        return "current"; // "Run Anyway" from the picker page
+      }
+
+      function loadScript(src, type) {
+        return new Promise(function (resolve, reject) {
+          var s = document.createElement("script");
+          s.src = src;
+          if (type) s.type = type;
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      }
+
+      function boot(engine) {
+        switch (engine) {
+          case "current":
+            return loadScript("js/jb.js", "module").catch(loaderError);
+          case "505":
+            return loadScript("legacy/505/exploit.js").catch(loaderError);
+          case "672":
+            return loadScript("legacy/672/jb.js")
+              .then(function () { return loadScript("legacy/672/boot.js"); })
+              .catch(loaderError);
+          case "legacy7":
+            return loadScript("legacy/700/alert.js", "module").catch(loaderError);
+          case "legacy9":
+            return loadScript("legacy/900/alert.js", "module").catch(loaderError);
+          case "css":
+            return loadScript("legacy/css/main.js")
+              .then(function () {
+                if (typeof window.doJb === "function") window.doJb();
+                else loaderError();
+              })
+              .catch(loaderError);
+          case "lapse":
+            return loadScript("legacy/slopkit/chain_lapse.js", "module").catch(loaderError);
+          case "poops":
+            return loadScript("legacy/slopkit/chain_poops.js", "module").catch(loaderError);
+        }
+      }
+
+      wireStatusWatchers();
+      boot(engineFor(fw));
     </script>
-    <script type="module" src="./js/jb.js?v=19" onerror="loaderError()"></script>
   </body>
 </html>
