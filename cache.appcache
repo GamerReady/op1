@@ -1,12 +1,18 @@
 CACHE MANIFEST
+# 13.02-14.00 -- bump the line below whenever a cached file changes, or a
+# console that already has the old copy will never notice the update.
+# version: 14.00.1
 
+CACHE:
 ./
 index.html
 load.html
-load.html?payload=hen
-load.html?payload=hen&log=1
-load.html?payload=goldhen
-load.html?payload=goldhen&log=1
+# The payload is chosen with a #fragment (load.html#payload=hen), not a query
+# string. A fragment is never part of the request line, so load.html is the
+# only entry AppCache can match -- the four "load.html?payload=..." lines that
+# used to be here described requests that are never made, and "?log=1" made
+# AppCache treat the whole manifest as a failure for anyone serving these
+# pages from a plain file server that can't answer query strings.
 rpc_worker.js
 js/jb.js
 js/afterglow.js

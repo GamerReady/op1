@@ -202,20 +202,67 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
         btn.focus();
     }
 
+    /*
+     * AppCache is what "offline ready" has always meant here, and the PS4
+     * browser does implement it. But the API is absent in three cases that
+     * look identical from inside the page:
+     *   - a browser that dropped it (Chromium removed it in M95);
+     *   - a non-secure origin, where newer Blink refuses to expose it;
+     *   - Incognito, where it is disabled outright.
+     * The old code called all of those "not supported", which reads like the
+     * host is broken when it is the browser that is. Say which one it is, and
+     * say plainly that the jailbreak still works -- only the offline copy is
+     * lost, which only matters on a console with no network.
+     */
     var ac = window.applicationCache;
+    var acMissing = !ac || typeof ac.addEventListener !== "function";
+
+    /* AppCache.ApplicationCacheStatus: UNCACHED 0, IDLE 1, CHECKING 2,
+       DOWNLOADING 3, UPDATEREADY 4, OBSOLETE 5. The old code compared
+       status === ac.IDLE only, so UNCACHED (0, the normal state on a first
+       visit) and CHECKING both fell through to "checking cache..." forever. */
+    var AC_UNCACHED = 0, AC_IDLE = 1, AC_CHECKING = 2,
+        AC_DOWNLOADING = 3, AC_UPDATEREADY = 4, AC_OBSOLETE = 5;
+
+    /* If the manifest is misconfigured, AppCache can sit in CHECKING and never
+       fire anything. Without this the picker never appears and the console is
+       stuck on "checking cache..." with no buttons at all -- the failure mode
+       that looks most like a broken host. The jailbreak does not need the
+       cache, so after the grace period go ahead regardless. */
+    var watchdog = null;
+    function stopWatchdog() {
+        if (watchdog) { clearTimeout(watchdog); watchdog = null; }
+    }
+    function startWatchdog() {
+        stopWatchdog();
+        watchdog = setTimeout(function () {
+            watchdog = null;
+            if (pickerShown) return;
+            setCache("cache slow -- continuing online", false);
+            showPicker(supported);
+        }, 12000);
+    }
+    var pickerShown = false;
+    function revealPicker(ex) {
+        pickerShown = true;
+        stopWatchdog();
+        showPicker(ex);
+    }
 
     function cacheReady() {
         setCache("cached -- offline ready", true);
-        showPicker(supported);
+        revealPicker(supported);
     }
     function cacheError() {
-        if (ac.status === ac.IDLE) return cacheReady();
-        setCache("cache unavailable -- reconnect and reload", false);
-        showPicker(supported);
+        if (ac && ac.status === AC_IDLE) return cacheReady();
+        setCache("cache failed -- reload online", false);
+        revealPicker(supported);
     }
     function cacheUpdated() {
         try { ac.swapCache(); } catch (e) {}
         setCache("update downloaded", true);
+        pickerShown = true;
+        stopWatchdog();
         promptReload();
     }
     function cacheDownloading() {
@@ -223,9 +270,10 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
         $("picker").style.display = "none";
     }
 
-    if (!ac) {
-        setCache("offline caching not supported", false);
-        showPicker(supported);
+    if (acMissing) {
+        /* Not a host problem, and not a blocker: say so and get on with it. */
+        setCache("offline cache unavailable (browser) -- online only", false);
+        revealPicker(supported);
     } else {
         ac.addEventListener("downloading", cacheDownloading, false);
         ac.addEventListener("progress", function (e) {
@@ -237,11 +285,15 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
         ac.addEventListener("error",       cacheError,    false);
         ac.addEventListener("obsolete",    cacheError,    false);
 
-        if      (ac.status === ac.UPDATEREADY)  cacheUpdated();
-        else if (ac.status === ac.IDLE)         cacheReady();
-        else if (ac.status === ac.DOWNLOADING)  cacheDownloading();
-        else if (!navigator.onLine || ac.status === ac.OBSOLETE) cacheError();
-        else setCache("checking cache...", false);
+        if      (ac.status === AC_UPDATEREADY) cacheUpdated();
+        else if (ac.status === AC_IDLE || ac.status === AC_UNCACHED) cacheReady();
+        else if (!navigator.onLine || ac.status === AC_OBSOLETE) cacheError();
+        else {
+            /* CHECKING or DOWNLOADING: wait for an event, but not forever. */
+            if (ac.status === AC_DOWNLOADING) cacheDownloading();
+            else setCache("checking cache...", false);
+            startWatchdog();
+        }
     }
 })();
 </script>

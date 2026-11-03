@@ -121,9 +121,17 @@
       var payload = new URLSearchParams(location.search || location.hash.slice(1)).get("payload");
       if (payload === "hen" || payload === "goldhen") window.selectedPayload = payload;
 
+      /* The old wording blamed the cache for every failure. A module that
+         fails to parse, or a console that is simply offline with no cache
+         installed yet, takes this same path -- so name both causes instead of
+         pointing at a cache refresh that may not be the problem. */
       function loaderError() {
         document.body.className = "fail";
-        document.getElementById("msg").textContent = "Loader files unavailable. Reconnect Wi-Fi and reload index.html to refresh the cache.";
+        var m = document.getElementById("msg");
+        if (m)
+          m.textContent =
+            "Loader files unavailable. Reconnect Wi-Fi and reload index.html " +
+            "to refresh the cache if this console has been offline.";
       }
     </script>
     <script type="module" src="./js/jb.js" onerror="loaderError()"></script>
