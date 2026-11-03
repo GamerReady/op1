@@ -36,6 +36,12 @@ export const OPTIONAL_KEYS = [
   "payload",
   "alias_of",
   "k_idt_rsvd",
+  // Marks a row whose kernel stage is not this file's chain at all: the aio
+  // use-after-free js/jb.js drives stops at 13.52, and above it the kernel is
+  // reached by afterglow (js/afterglow.js), which brings its own offsets,
+  // its own patch set and its own enablers. Declarative like alias_of --
+  // js/jb.js reads it, and it is the only thing that decides the handover.
+  "own_kernel_stage",
 ];
 
 export const PS4 = {
@@ -369,6 +375,92 @@ PS4["13.52"] = Object.assign({}, PS4["13.50"], {
     "kderive 16/16 recipes) kpatch=1352.bin-24-sites-verified-OFFLINE-ONLY " +
     "payload=hen.bin-PS4HEN-native-1352 (patched-GoldHEN KP'd 2/2) " +
     "bug=663",
+});
+
+/* ============================================================== 14.00 =====
+   14.00 is the first row that is not one firmware's kernel table but a
+   different KERNEL STAGE. The aio use-after-free js/jb.js drives has no
+   proof above 13.52, so 14.00 is reached by afterglow instead -- the apm
+   use-after-free of https://github.com/well0nez/afterglow-web, which lives
+   here as js/afterglow.js and is handed the WebKit primitive js/jb.js has
+   already built by the time it would have started reading the kernel.
+
+   What that means for this table, and why it looks half empty:
+
+   - The WebKit half is real and is inherited below. 14.00 ships the same
+     WebKit module as 13.52, so every wk_* gadget, the AES anchor
+     (wk_expm1_builtin), both JavaScriptCore layouts and the libkernel
+     resolution (wk___imp___error -> k__error) are 13.52's. That is why
+     alias_of reads "13.52-webkit" and not "13.52": the alias is exact for
+     one half of the table only. js/jb.js byte-checks all fifteen gadgets
+     and both module bases on the console before it calls anything, so an
+     inherited value that turned out wrong stops the run there.
+
+   - The kernel half is deliberately NOT inherited. A 13.52 kernel RVA
+     written into a 14.00 kernel is exactly the kind of wrong number that
+     panics a console, and this page has no dump that could verify one.
+     afterglow carries its own (they are the constants at the top of
+     js/afterglow.js: prison0 0x111fa18, rootvnode 0x2136e90, and its own
+     measure of the kernel base), so every k_* that names a kernel address
+     is blanked rather than copied. own_kernel_stage is what makes js/jb.js
+     hand over instead of reading this table.
+
+   - k_scan_stage1/stage2 and k__error stay: those are libkernel and
+     JavaScriptCore RVAs, shared with 13.52, and the syscall-stub scan and
+     the libkernel base resolution need them before the handover. The two
+     pthread_create fields are blanked although WebKit shares them, because
+     afterglow decides that slot itself from the import table and checks it
+     against libkernel's own bounds.
+
+   The payload column is the same two names as everywhere else, and
+   ?payload=goldhen|hen still picks between them; on this row the pick goes
+   through afterglow's loader, which reads the form from the bytes (a raw
+   "e9" image here) rather than from the file name.
+
+   State: UNTESTED from this page. The kernel stage is afterglow's own,
+   written for this firmware; this wiring is new. Nothing persists and the
+   kernel patch lives until the console reboots. */
+PS4["14.00"] = Object.assign({}, PS4["13.52"], {
+  alias_of: "13.52-webkit",
+  own_kernel_stage: true,
+  fw_status:
+    "state=UNTESTED-from-this-page webkit=13.52-identical (15/15 gadgets + both bases byte-checked on the console) " +
+    "kernel=afterglow-apm-UAF (js/afterglow.js: own base, own 15+10 patch sites, own enablers) " +
+    "kpatch=1400.bin payload=goldhen.bin|hen.bin bug=apm",
+
+  /* no kernel stage of this file runs on this row */
+  k_idt_rsvd: undefined,
+  k_sysctl_handle_int: undefined,
+  k_jmp_rsi: undefined,
+  k_kl_lock: undefined,
+  k_evf_cv: undefined,
+  k_sysent: undefined,
+  k_sysent_661: undefined,
+
+  k_oid_kern_file: undefined,
+  k_oid_maxfilesperproc: undefined,
+  k_oid_maxprocperuid: undefined,
+  k_oid_maxfiles: undefined,
+
+  k_arg1_maxfilesperproc: undefined,
+  k_arg1_maxprocperuid: undefined,
+  k_arg1_maxfiles: undefined,
+
+  k_prison0: undefined,
+  k_rootvnode: undefined,
+
+  /* afterglow resolves its own syscalls and takes pthread_create out of
+     WebKit's import table, so none of these are used -- and none of them
+     were measured on 14.00 either */
+  k_stubs: undefined,
+  wk___imp_pthread_create: undefined,
+  k_pthread_create: undefined,
+
+  kpatch: "1400.bin",
+  /* no payload file on this row either: afterglow is handed the two names in
+     js/jb.js (bin/goldhen1400.bin, bin/hen1400.bin) because ?payload picks
+     between them, and the pick is not this table's business. */
+  payload: undefined,
 });
 
 PS4["13.02"] = Object.assign({}, PS4["13.00"], {

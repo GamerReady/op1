@@ -9,6 +9,7 @@ load.html?payload=goldhen
 load.html?payload=goldhen&log=1
 rpc_worker.js
 js/jb.js
+js/afterglow.js
 js/core.js
 js/mem.js
 js/int64.js
@@ -16,9 +17,12 @@ js/ps4_offsets.js
 js/rpc_worker.js
 bin/hen.bin
 bin/goldhen.bin
+bin/hen1400.bin
+bin/goldhen1400.bin
 bin/patches/1302.bin
 bin/patches/1350.bin
 bin/patches/1352.bin
+bin/patches/1400.bin
 
 NETWORK:
 *
