@@ -19,9 +19,6 @@ js/ps4_offsets.js
 js/rpc_worker.js
 bin/hen.bin
 bin/goldhen.bin
-bin/hen1400.bin
-bin/goldhen1400.bin
-bin/payload.bin
 bin/patches/1001.bin
 bin/patches/1100.bin
 bin/patches/1150.bin

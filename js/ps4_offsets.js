@@ -28,6 +28,17 @@ export const REQUIRED_KEYS = [
   "k_sysent_661",
   "k_jmp_rsi",
 ];
+/* The two enablers. One build of each serves every supported firmware:
+   GoldHEN's first act is "detect firmware, fill the pointer table", so it
+   reads the console it is running on rather than being compiled for it, and
+   ps4-hen resolves its offsets the same way. That is why these are plain
+   names and not one file per version -- there used to be four of these plus
+   a duplicate GoldHEN, and the extra ~0.85 MB bought nothing.
+
+   js/jb.js and js/afterglow.js both take their paths from here. */
+export const GOLDHEN_BIN = "bin/goldhen.bin";
+export const HEN_BIN = "bin/hen.bin";
+
 export const OPTIONAL_KEYS = [
   "k_stubs",
   "wk___imp_pthread_create",
@@ -308,7 +319,7 @@ export const PS4 = {
     k_evf_cv: 0x0,
     k_sysent_661: 0x110a760,
     k_jmp_rsi: 0x47b31,
-    payload: "bin/payload.bin",
+    payload: HEN_BIN,
     k_oid_kern_file: 0x1a2f8a0,
     k_oid_maxfilesperproc: 0x1a2f950,
     k_oid_maxprocperuid: 0x1a3ba88,
@@ -547,9 +558,9 @@ PS4["14.00"] = Object.assign({}, PS4["13.52"], {
   k_pthread_create: undefined,
 
   kpatch: "1400.bin",
-  /* no payload file on this row either: afterglow is handed the two names in
-     js/jb.js (bin/goldhen1400.bin, bin/hen1400.bin) because ?payload picks
-     between them, and the pick is not this table's business. */
+  /* no payload file on this row: afterglow is handed GOLDHEN_BIN and HEN_BIN
+     because ?payload picks between them, and the pick is not this table's
+     business. */
   payload: undefined,
 });
 
@@ -614,6 +625,19 @@ PS4["12.02"] = Object.assign({}, PS4["12.00"], {
   kpatch: "1200.bin",
 });
 
+PS4["11.52"] = Object.assign({}, PS4["11.50"], {
+  alias_of: "11.50",
+  /* 11.52 shares 11.50's WebKit and libkernel; that is the whole reason it is
+     an alias and not its own row. The KernelView walk reads no kernel RVAs on
+     a lapse row, so the untested ones are only along for the ride. 1150.bin is
+     the patch set for both, on the same reasoning. */
+  fw_status:
+    "state=UNTESTED-on-hardware shares=11.50 " +
+    "webkit=assumed-identical-to-11.50 kernel_rvas=untested-vs-dump " +
+    "kpatch=1150.bin bug=lapse",
+  kpatch: "1150.bin",
+});
+
 PS4["12.52"] = Object.assign({}, PS4["12.50"], {
   alias_of: "12.50",
   fw_status:

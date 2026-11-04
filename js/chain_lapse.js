@@ -1,15 +1,14 @@
 import { establishPrimitive } from "./core.js";
 import { installWindowP } from "./mem.js";
 import { int64 } from "./int64.js";
-import { offsetsFor } from "./ps4_offsets.js";
+import { offsetsFor, GOLDHEN_BIN, HEN_BIN } from "./ps4_offsets.js";
 
-/* Assets live under bin/ in this repo. Keep the payload switch load.html
-   already implements: ?payload=hen|goldhen picks bin/hen.bin or
-   bin/goldhen.bin, and anything else falls back to bin/payload.bin, which is
-   the blob this chain was proven against. */
-const PAYLOAD_URL = window.selectedPayload
-  ? "bin/" + window.selectedPayload + ".bin"
-  : "bin/payload.bin";
+/* Assets live under bin/ in this repo, and there is exactly one GoldHEN and
+   one ps4-hen: both builds detect the firmware they are running on, so a
+   single file serves every version this page supports. load.html's
+   ?payload=hen|goldhen switch picks which, and GoldHEN is the default. */
+const PAYLOAD_URL =
+  window.selectedPayload === "hen" ? HEN_BIN : GOLDHEN_BIN;
 
 const outEl = document.getElementById("out");
 const stateEl = document.getElementById("state");
@@ -3338,7 +3337,7 @@ function makeRpc(worker) {
                   mark("PAYLOAD-SKIPPED", "reason=kpatch-incomplete");
                 }
                 if (!payload) {
-                  mark("PAYLOAD-NONE", "payload.bin was not loaded");
+                  mark("PAYLOAD-NONE", "the payload blob was not loaded");
                 }
 
                 if (payload && params.get("payload") === "0")
