@@ -1,7 +1,7 @@
 import { establishPrimitive } from "./core.js";
 import { installWindowP, pairStatus } from "./mem.js";
 import { int64 } from "./int64.js";
-import { offsetsFor } from "./ps4_offsets.js";
+import { offsetsFor, GOLDHEN_BIN, HEN_BIN } from "./ps4_offsets.js";
 
 const outEl = document.getElementById("out");
 const stateEl = document.getElementById("state");
@@ -239,10 +239,10 @@ let allDone = false,
           " (" + stageRow + ")"
         : "bin/patches/" + (off.kpatch || fwKey.replace(".", "") + ".bin");
     const PAYLOAD_FILE = ownKernelStage
-      ? "bin/goldhen1400.bin|bin/hen1400.bin (per payload)"
+      ? GOLDHEN_BIN + "|" + HEN_BIN + " (per payload)"
       : ownStage
-        ? "bin/payload.bin|bin/hen.bin|bin/goldhen.bin (per payload)"
-        : off.payload || "payload.bin";
+        ? GOLDHEN_BIN + "|" + HEN_BIN + " (per payload)"
+        : off.payload || HEN_BIN;
     const needPatch = ["k_sysent_661", "k_jmp_rsi"].filter(
       (k) => off[k] === undefined,
     );
@@ -763,7 +763,7 @@ let allDone = false,
 
           /* this repo's files: bin/patches/1400.bin and the two enablers */
           patchSet: "bin/patches/1400.bin",
-          enablers: { goldhen: "bin/goldhen1400.bin", hen: "bin/hen1400.bin" },
+          enablers: { goldhen: GOLDHEN_BIN, hen: HEN_BIN },
         });
       } catch (agErr) {
         mark(

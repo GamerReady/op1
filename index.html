@@ -88,7 +88,7 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
 
     var params = new URLSearchParams(location.search);
     /* Every row js/ps4_offsets.js carries, and which kernel stage drives it:
-         10.01-12.02  lapse      (js/chain_lapse.js)
+         10.01-12.02  lapse      (js/chain_lapse.js, 11.52 aliases 11.50)
          12.50-12.52  poops      (js/chain_poops.js)
          13.00-13.52  this page  (js/jb.js)
          14.00        afterglow  (js/afterglow.js)
@@ -97,7 +97,7 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
        12.20-12.49 are absent on purpose -- lapse ends at 12.02 and poops
        starts at 12.50, so nothing drives them. */
     var SUPPORTED = {
-        1001: 1, 1100: 1, 1150: 1, 1200: 1, 1202: 1,
+        1001: 1, 1100: 1, 1150: 1, 1152: 1, 1200: 1, 1202: 1,
         1250: 1, 1252: 1,
         1300: 1, 1302: 1, 1304: 1, 1350: 1, 1352: 1, 1400: 1,
     };

@@ -26,11 +26,12 @@
     the raw13 one:
 
       1. The patch set and the payloads are fetched from this repo's bin/
-         (bin/patches/1400.bin, bin/goldhen1400.bin, bin/hen1400.bin)
-         through paths the loader hands in -- not from file names this file
-         assumes. The two 14.00 builders stay separate files: a payload is
-         built against one firmware's kernel, so 13.52's enablers cannot be
-         reused here.
+         (bin/patches/1400.bin, bin/goldhen.bin, bin/hen.bin) through paths
+         the loader hands in -- not from file names this file assumes. One
+         build of each enabler serves every firmware this page supports:
+         GoldHEN opens with "detect firmware, fill the pointer table", so it
+         reads the console it landed on instead of being compiled for it, and
+         ps4-hen resolves its offsets the same way.
       2. ?payload picks the enabler by name (goldhen|hen), the same choice
          index.html offers, instead of by file name in the URL.
       3. int64 is ./int64.js, the one the rest of this page uses.
@@ -46,17 +47,18 @@
       bin/patches/1400.bin    afterglow's patchset.bin, unmodified. 641 bytes,
                               15 position-independent kernel text writes,
                               independent of the fault address.
-      bin/goldhen1400.bin     afterglow's goldhen.bin (297,496 bytes, a raw
+      bin/goldhen.bin         afterglow's goldhen.bin (297,496 bytes, a raw
                               "e9" jmp image). GoldHEN, by SiSTRo and the
-                              GoldHEN team.
-      bin/hen1400.bin         afterglow's hen.bin (500,448 bytes). ps4-hen
+                              GoldHEN team. Firmware is detected at runtime,
+                              so the same file is used on every version.
+      bin/hen.bin             afterglow's hen.bin (500,448 bytes). ps4-hen
                               pre-release-main-182, carrying the
                               sceSblPfsSetKeys fix for 14.00 that upstream
                               lacks (see afterglow's README: unpatched, every
-                              app launch freezes the console).
-    They are separate files from this repo's 13.52 enablers on purpose: an
-    enabler is built against one firmware's kernel, so 13.52's cannot stand in
-    for these. js/jb.js names them; this module never guesses a path.
+                              app launch freezes the console). Resolves its
+                              own offsets per firmware, so it is not
+                              14.00-only either.
+    js/jb.js hands both paths in; this module never guesses a path.
 */
 
 import { int64 } from "./int64.js";
@@ -163,8 +165,8 @@ function patchSetUrl() {
 function enablerUrl(which) {
   const h = host();
   const p = h.enablers || {};
-  if (which === "goldhen") return p.goldhen || "bin/goldhen1400.bin";
-  return p.hen || "bin/hen1400.bin";
+  if (which === "goldhen") return p.goldhen || "bin/goldhen.bin";
+  return p.hen || "bin/hen.bin";
 }
 
 const LOW = 0x100000000;
