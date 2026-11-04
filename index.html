@@ -87,10 +87,20 @@ hr{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
     }
 
     var params = new URLSearchParams(location.search);
-    /* Every row js/ps4_offsets.js carries. 14.00 is not a 13.52 alias with a
-       different number: it is a different kernel stage (afterglow, see
-       js/afterglow.js) behind the same WebKit, and the row says so. */
-    var SUPPORTED = { 1302: 1, 1304: 1, 1350: 1, 1352: 1, 1400: 1 };
+    /* Every row js/ps4_offsets.js carries, and which kernel stage drives it:
+         10.01-12.02  lapse      (js/chain_lapse.js)
+         12.50-12.52  poops      (js/chain_poops.js)
+         13.00-13.52  this page  (js/jb.js)
+         14.00        afterglow  (js/afterglow.js)
+       13.00 is not poops here: its row has the full kernel table and is
+       proven through the aio chain this page already runs.
+       12.20-12.49 are absent on purpose -- lapse ends at 12.02 and poops
+       starts at 12.50, so nothing drives them. */
+    var SUPPORTED = {
+        1001: 1, 1100: 1, 1150: 1, 1200: 1, 1202: 1,
+        1250: 1, 1252: 1,
+        1300: 1, 1302: 1, 1304: 1, 1350: 1, 1352: 1, 1400: 1,
+    };
 
     var key = null, fwnum = null;
     var m = /PlayStation\s+4[\/ ](\d+)\.(\d+)/.exec(navigator.userAgent);

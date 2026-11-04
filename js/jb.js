@@ -169,6 +169,30 @@ let allDone = false,
        everything up to the ROP call is the same work either way. */
     const ownKernelStage = off.own_kernel_stage === true;
 
+    /* Below 13.00 the rows carry WebKit gadgets and syscall stubs but not the
+       ten kernel RVAs NEED_K below reads, and nothing here can derive them.
+       Those firmwares are driven by their own stages instead, on the split
+       their reference uses: lapse through 12.02, poops from 12.50. 13.00
+       keeps this file's chain -- its row has the full kernel table and is
+       proven through it.
+
+       12.50 and 12.52 are the exception that proves the rule: they are
+       poops-range but still lack the kernel table, so they hand off too.
+
+       Selected off the firmware number, so an alias added to the table
+       inherits the right stage by construction rather than by prose. */
+    const fwNum = parseInt(fwKey.replace(".", ""), 10);
+    const stageRow = ownKernelStage
+      ? "afterglow"
+      : fwNum <= 1202
+        ? "lapse"
+        : fwNum === 1250 || fwNum === 1252
+          ? "poops"
+          : fwNum > 1202 && fwNum < 1250
+            ? "none"
+            : "aio";
+    const ownStage = stageRow !== "aio";
+
     const DO_JB = params.get("jb") !== "0";
     const DO_PATCH = params.get("patch") !== "0";
     const DO_PAYLOAD = params.get("payload") !== "0";
@@ -191,7 +215,7 @@ let allDone = false,
     if (
       !check(
         "kernel-table-present",
-        missing.length === 0 || ownKernelStage,
+        missing.length === 0 || ownStage,
         "fw=" +
           fwKey +
           " missing=[" +
@@ -209,17 +233,23 @@ let allDone = false,
        actually uses, so the log does not lie. */
     const KPATCH_FILE = ownKernelStage
       ? "bin/patches/1400.bin (afterglow)"
-      : "bin/patches/" + (off.kpatch || fwKey.replace(".", "") + ".bin");
+      : ownStage
+        ? "bin/patches/" +
+          (off.kpatch || fwKey.replace(".", "") + ".bin") +
+          " (" + stageRow + ")"
+        : "bin/patches/" + (off.kpatch || fwKey.replace(".", "") + ".bin");
     const PAYLOAD_FILE = ownKernelStage
       ? "bin/goldhen1400.bin|bin/hen1400.bin (per payload)"
-      : off.payload || "payload.bin";
+      : ownStage
+        ? "bin/payload.bin|bin/hen.bin|bin/goldhen.bin (per payload)"
+        : off.payload || "payload.bin";
     const needPatch = ["k_sysent_661", "k_jmp_rsi"].filter(
       (k) => off[k] === undefined,
     );
     if (
       !check(
         "kpatch-table-present",
-        !DO_PATCH || needPatch.length === 0 || ownKernelStage,
+        !DO_PATCH || needPatch.length === 0 || ownStage,
         "missing=[" +
           needPatch.join(",") +
           "] blob=" +
@@ -234,13 +264,22 @@ let allDone = false,
     if (
       !check(
         "payload-table-present",
-        !DO_PAYLOAD || needPl.length === 0 || ownKernelStage,
+        !DO_PAYLOAD || needPl.length === 0 || ownStage,
         "missing=[" + needPl.join(",") + "] payload=" + PAYLOAD_FILE,
       )
     )
       return;
     mark("FW-STATUS", off.fw_status || "none");
-    if (!ownKernelStage)
+    if (ownStage)
+      mark(
+        "FW-KTABLE",
+        "kernel stage=" +
+          stageRow +
+          " (own leak, own patch set, own payload) kpatch=" +
+          KPATCH_FILE +
+          " src=ps4_offsets.js",
+      );
+    else
       mark(
         "FW-KTABLE",
         "idt_rsvd=0x" +
@@ -249,16 +288,6 @@ let allDone = false,
           off.k_prison0.toString(16) +
           " rootvnode=0x" +
           off.k_rootvnode.toString(16) +
-          " kpatch=" +
-          KPATCH_FILE +
-          " payload=" +
-          PAYLOAD_FILE +
-          " src=ps4_offsets.js",
-      );
-    else
-      mark(
-        "FW-KTABLE",
-        "kernel stage=afterglow (own leak, own patch set, own enablers)" +
           " kpatch=" +
           KPATCH_FILE +
           " payload=" +
@@ -326,6 +355,57 @@ let allDone = false,
         "AUTO-RETRY-RESUME",
         "read-phase retry " + retryCount() + "/" + RETRY_MAX,
       );
+
+    /* ---- rows that bring their own kernel stage ---------------------- 
+
+       lapse and poops are whole exploits: they establish their own WebKit
+       primitive, find their own kernel base and carry their own patch set.
+       core.js permits exactly one primitive per page (fakeReleased), so this
+       handoff has to happen BEFORE the primitive below -- import the stage
+       and this file never touches the carrier at all. That is the difference
+       between these rows and afterglow's, which borrows the primitive this
+       file builds and therefore hands over much later.
+
+       Two exploits must never run against one kernel, so this returns. */
+    if (ownStage && stageRow !== "afterglow") {
+      if (stageRow === "none") {
+        mark(
+          "STAGE-NONE",
+          "fw=" +
+            fwKey +
+            " -- lapse ends at 12.02 and poops starts at 12.50, so this " +
+            "firmware has no working bug",
+        );
+        state("no exploit for " + fwKey, "bad");
+        allDone = true;
+        return;
+      }
+      mark(
+        "STAGE",
+        "fw=" +
+          fwKey +
+          " kernel stage=" +
+          stageRow +
+          " -- the aio chain below needs kernel RVAs this row does not carry",
+      );
+      state("running the " + stageRow + " stage...", "warn");
+      let stageOk = false;
+      try {
+        await import(
+          stageRow === "poops" ? "./chain_poops.js" : "./chain_lapse.js"
+        );
+        stageOk = true;
+      } catch (stageErr) {
+        mark("STAGE-THREW", (stageErr && stageErr.message) || String(stageErr));
+        state("the " + stageRow + " stage threw", "bad");
+      }
+      mark(
+        "STAGE-VERDICT",
+        "fw=" + fwKey + " stage=" + stageRow + " loaded=" + (stageOk ? 1 : 0),
+      );
+      allDone = true;
+      return;
+    }
 
     state("running the primitive...", "warn");
     await new Promise((r) => setTimeout(r, 0));

@@ -10,6 +10,8 @@ load.html?payload=goldhen&log=1
 rpc_worker.js
 js/jb.js
 js/afterglow.js
+js/chain_lapse.js
+js/chain_poops.js
 js/core.js
 js/mem.js
 js/int64.js
@@ -19,6 +21,13 @@ bin/hen.bin
 bin/goldhen.bin
 bin/hen1400.bin
 bin/goldhen1400.bin
+bin/payload.bin
+bin/patches/1001.bin
+bin/patches/1100.bin
+bin/patches/1150.bin
+bin/patches/1200.bin
+bin/patches/1250.bin
+bin/patches/1300.bin
 bin/patches/1302.bin
 bin/patches/1350.bin
 bin/patches/1352.bin
